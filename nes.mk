@@ -29,7 +29,45 @@ build/%: %.ips
 build/%.chrs/fake: %.chr | build
 	[ -d build/$*.chrs ] || mkdir build/$*.chrs
 	touch $@
-	split -x -b 16 $< build/$*.chrs/
+	split -d -b 16 $< build/$*.chrs/
+	mv build/$*.chrs/10 build/$*.chrs/0a
+	mv build/$*.chrs/11 build/$*.chrs/0b
+	mv build/$*.chrs/12 build/$*.chrs/0c
+	mv build/$*.chrs/13 build/$*.chrs/0d
+	mv build/$*.chrs/14 build/$*.chrs/0e
+	mv build/$*.chrs/15 build/$*.chrs/0f
+	mv build/$*.chrs/16 build/$*.chrs/10
+	mv build/$*.chrs/17 build/$*.chrs/11
+	mv build/$*.chrs/18 build/$*.chrs/12
+	mv build/$*.chrs/19 build/$*.chrs/13
+	mv build/$*.chrs/20 build/$*.chrs/14
+	mv build/$*.chrs/21 build/$*.chrs/15
+	mv build/$*.chrs/22 build/$*.chrs/16
+	mv build/$*.chrs/23 build/$*.chrs/17
+	mv build/$*.chrs/24 build/$*.chrs/18
+	mv build/$*.chrs/25 build/$*.chrs/19
+	mv build/$*.chrs/26 build/$*.chrs/1a
+	mv build/$*.chrs/27 build/$*.chrs/1b
+	mv build/$*.chrs/28 build/$*.chrs/1c
+	mv build/$*.chrs/29 build/$*.chrs/1d
+	mv build/$*.chrs/30 build/$*.chrs/1e
+	mv build/$*.chrs/31 build/$*.chrs/1f
+	mv build/$*.chrs/32 build/$*.chrs/20
+	mv build/$*.chrs/33 build/$*.chrs/21
+	mv build/$*.chrs/34 build/$*.chrs/22
+	mv build/$*.chrs/35 build/$*.chrs/23
+	mv build/$*.chrs/36 build/$*.chrs/24
+	mv build/$*.chrs/37 build/$*.chrs/25
+	mv build/$*.chrs/38 build/$*.chrs/26
+	mv build/$*.chrs/39 build/$*.chrs/27
+	mv build/$*.chrs/40 build/$*.chrs/28
+	mv build/$*.chrs/41 build/$*.chrs/29
+	mv build/$*.chrs/42 build/$*.chrs/2a
+	mv build/$*.chrs/43 build/$*.chrs/2b
+	mv build/$*.chrs/44 build/$*.chrs/2c
+	mv build/$*.chrs/45 build/$*.chrs/2d
+	mv build/$*.chrs/46 build/$*.chrs/2e
+	mv build/$*.chrs/47 build/$*.chrs/2f
 build/%.rle: % rle-enc.awk | build
 	# 'basenc --base16 -w2' and 'basenc --base16 -d' would also work, but
 	# basenc isn't as widely available as xxd since it was added in
