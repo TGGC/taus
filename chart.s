@@ -5,6 +5,7 @@
 __CHARTSIMPORT = 1
 .include "build/tetris.inc"
 .include "ips.inc"
+.include "tetris-tbl.inc"
 .include "chart.inc"
 
 .export levelEffs
@@ -67,14 +68,11 @@ drawChartBackground:
         cpx     #chartBarCount
         bne     @checkRange
 
-        ldy     #playfieldLiteralRow*10
-        ldx     #$00
+        ldx     #playfieldLiteralSize
 @copyLiteral:
-        lda     playfieldLiteral,x
-        sta     playfield,y
-        iny
-        inx
-        cpx     #playfieldLiteralSize
+        lda     playfieldLiteral-1,x
+        sta     playfieldLiteralDest-1,x
+        dex
         bne     @copyLiteral
 
         ldx     #chartBarCount/2
@@ -373,12 +371,13 @@ div3125:
 chartEffConvert := div3125
 .endif
 
-playfieldLiteralRow = 20-6-3
+playfieldLiteralDest := playfield+(20-6-3)*10
 playfieldLiteralSize = 30
 playfieldLiteral:
-.byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
-.byte   $FF,$0E,$0F,$0F,$FF,$15,$18,$10,$FF,$FF
-.byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        set_tbl CHR01+CHR_RIGHT
+        .byte   "          "
+        .byte   " EFF LOG  "
+        .byte   "          "
 
 .export chart_attributetable_patch
 chart_attributetable_patch:

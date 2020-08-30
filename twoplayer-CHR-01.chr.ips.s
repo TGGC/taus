@@ -4,7 +4,54 @@ IPSCHROFFSET = 0
 .segment "IPSCHR"
 
 .ifdef TOURNAMENT_MODE
+<<<<<<< HEAD
 .include "tournament-CHR.inc"
+=======
+NEXT_ON_TOP = 0
+
+    .include "tournament.screenlayout.inc"
+
+    ips_tilehdr CHR_RIGHT,INGAME_LAYOUT_CHARID_HUNDRED
+    .incbin "build/twoplayer.chrs/1a"
+
+    ips_tilehdr CHR_RIGHT,INGAME_LAYOUT_CHARID_HUNDRED+1
+    .incbin "build/twoplayer.chrs/1b"
+
+    ips_tilehdr CHR_RIGHT,INGAME_LAYOUT_CHARID_ARROWS
+    .incbin "build/twoplayer.chrs/1e"
+
+    ips_tilehdr CHR_RIGHT,INGAME_LAYOUT_CHARID_ARROWS+1
+    .incbin "build/twoplayer.chrs/1f"
+
+    ips_tilehdr CHR_RIGHT,INGAME_LAYOUT_CHARID_ARROWS+2
+    .incbin "build/twoplayer.chrs/1c"
+
+    ips_tilehdr CHR_RIGHT,INGAME_LAYOUT_CHARID_ARROWS+3
+    .incbin "build/twoplayer.chrs/1d"
+
+.endif
+
+.ifdef NEXT_ON_TOP
+        ips_tilehdr CHR_RIGHT,$68
+        .incbin "build/twoplayer.chrs/18"
+.endif
+
+        ips_tilehdr CHR_RIGHT,$76
+        .incbin "build/twoplayer.chrs/04"
+
+        ips_tilehdr CHR_RIGHT,$86
+        .incbin "build/twoplayer.chrs/05"
+
+        ips_tilehdr CHR_RIGHT,$8C
+        .incbin "build/twoplayer.chrs/00"
+
+.ifndef NEXT_ON_TOP
+        ips_tilehdr CHR_RIGHT,$8D
+        .incbin "build/twoplayer.chrs/01"
+
+        ips_tilehdr CHR_RIGHT,$9C
+        .incbin "build/twoplayer.chrs/02"
+>>>>>>> e0c87764602d9b93794afd0d04a80302fa2a11e3
 .else
 
     .ifdef NEXT_ON_TOP

@@ -1,61 +1,101 @@
-all: tetris taus screens custom handicap twoplayer build/game_palette.pal build/menu_palette.pal build/game_nametable.nam build/level_menu_nametable.nam
+all: tetris taus screens custom handicap twoplayer playerid build/game_palette.pal build/menu_palette.pal build/game_nametable.nam build/level_menu_nametable.nam
+test: build/tetris-test build/taus-test.test build/chart-test.test build/twoplayer-test.test
+# These are simply aliases
+.PHONY: all dis tetris taus screens custom handicap twoplayer playerid
 
-# Manually list prerequisites that are generated. Non-generated files will
-# automatically be computed.
-build/taus.o: build/tetris.inc build/taus.chrs/fake
-build/playerid.o: build/tetris.inc
+dis: build/tetris-PRG.s
+
+handicap: build/handicap.nes
+# For .o files, manually list prerequisites that are generated. Non-generated
+# files will automatically be computed
 build/handicap.o: build/tetris.inc
-build/screens.o: build/tetris.inc
-build/chart.o: build/tetris.inc build/taus.chrs/fake
-build/tetris-CHR.o: build/tetris-CHR-00.chr build/tetris-CHR-01.chr
-build/twoplayer.o: build/tetris.inc build/twoplayer_game.nam.rle build/twoplayer_game_top.nam.rle build/tournament.nam.rle build/tetris-CHR-00.chr build/twoplayer-CHR-01.chr
-build/twoplayer-CHR-01.chr.ips.o: build/twoplayer.chrs/fake
-# .diff base files. There should be a .diff for each target
-build/twoplayer-tetris-PRG.s: build/tetris-PRG.s
-# List linker dependencies. There should be a .cfg for each target
-build/tetris.nes: build/tetris.o build/tetris-CHR.o build/tetris-PRG.o build/tetris-ram.o
-build/taus.ips: build/taus.o build/ips.o build/fastlegal.o build/playerid.o build/chart.o
-build/screens.ips: build/screens.o build/ips.o
-build/highscores.ips: build/highscores.o build/ips.o
+# Detect IPS hunks. These .o files used ips_segments in their .s
+build/handicap.ips.cfg: build/handicap.o
+# Linker dependencies. There is a corresponding .cfg file
 build/handicap.ips: build/handicap.o build/ips.o
-build/twoplayer.nes: build/tetris.o build/twoplayer-tetris-PRG.o build/tetris-ram.o build/twoplayer.o build/rle.o
-build/twoplayer-CHR-01.chr.ips: build/ips.o build/twoplayer-CHR-01.chr.ips.o
-# IPS base dependencies. There should be a .ips for each target
-build/taus.nes: build/tetris.nes
-build/screens.nes: build/tetris.nes
-build/highscores.nes: build/tetris.nes
+# IPS base file. There is a corresponding .ips file
 build/handicap.nes: build/tetris.nes
-build/twoplayer-CHR-01.chr: build/tetris-CHR-01.chr
-# Combine mods
-build/custom.nes: build/taus.ips build/highscores.ips
 
-build/twoplayer.dist.ips: build/tetris.nes build/twoplayer.nes
-	flips --create $^ $@ > /dev/null
+build/fastlegal.o: build/tetris.inc
+build/fastlegal.ips.cfg: build/fastlegal.o
+build/fastlegal.ips: build/fastlegal.o build/ips.o
+build/fastlegal.nes: build/tetris.nes
 
 CAFLAGS = "-g" "-DTOURNAMENT_MODE"
 LDFLAGS =
 VPATH = build
 
-build:
-	mkdir build
+build/highscores.o: build/tetris.inc
+build/highscores.ips.cfg: build/highscores.o
+build/highscores.ips: build/highscores.o build/ips.o
+build/highscores.nes: build/tetris.nes
 
-build/%.o: %.s Makefile | build
-	ca65 $(CAFLAGS) --create-dep $@.d $< -o $@
+playerid: build/playerid.nes
+build/playerid.o: build/tetris.inc
+build/playerid.ips.cfg: build/playerid.o
+build/playerid.ips: build/ips.o build/playerid.o
+build/playerid.nes: build/tetris.nes
 
-build/%: %.cfg
-	ld65 $(LDFLAGS) -Ln $(basename $@).lbl --dbgfile $(basename $@).dbg -o $@ -C $< $(filter %.o,$^)
+screens: build/screens.nes
+build/screens.o: build/tetris.inc
+build/screens.ips.cfg: build/screens.o
+build/screens.ips: build/screens.o build/ips.o
+build/screens.nes: build/tetris.nes
 
-build/%.nes: build/%.ips
-	# Second prerequisite is assumed to be a .nes source
+taus: build/taus.nes build/taus-CHR-01.chr
+build/chart.o: build/tetris.inc build/taus.chrs/fake
+build/taus.o: build/tetris.inc build/taus.chrs/fake build/taus_game.nam.stripe
+ifeq "$(PAL)" "1"
+build/taus.ips: build/taus-pal.ips
+	cp $< $@
+	cp $(basename $<).dbg $(basename $@).dbg
+	cp $(basename $<).lbl $(basename $@).lbl
+build/taus-pal.ips: build/taus.o build/ips.o build/fastlegal.o build/chart.o
+else
+build/taus.ips: build/taus.o build/ips.o build/fastlegal.o build/chart.o
+endif
+build/taus.nes: build/tetris.nes
+build/chart-test.test: chart-test.lua build/taus.nes
+build/taus-test.test: taus-test.lua build/taus.nes
+build/taus-CHR-01.chr: build/taus.nes
+	tail -c +40977 $< | head -c 8192 > $@
+build/taus-pal.ips.cfg: taus.ips.cfg ntsc2pal.awk | build
+	awk -f ntsc2pal.awk $< > $@
+
+tetris: build/tetris.nes
+build/tetris-CHR.o: build/tetris-CHR-00.chr build/tetris-CHR-01.chr
+build/tetris.nes: build/tetris.o build/tetris-CHR.o build/tetris-PRG.o build/tetris-ram.o
+ifeq "$(PAL)" "1"
+build/tetris-test: tetris-pal.nes
+else
+build/tetris-test: tetris.nes
+endif
+build/tetris-test: build/tetris.nes
+	diff $^
+	touch $@
+
+twoplayer: build/twoplayer.dist.ips
+build/twoplayer-CHR-01.chr.ips.o: build/twoplayer.chrs/fake
+build/twoplayer.o: build/tetris.inc build/twoplayer_game.nam.rle build/twoplayer_game_top.nam.rle build/tournament.nam.rle build/tetris-CHR-00.chr build/twoplayer-CHR-01.chr build/legal_screen_nametable.nam.rle
+# Diff base file. There is a corresponding .diff file
+build/twoplayer-tetris-PRG.s: build/tetris-PRG.s
+build/twoplayer-CHR-01.chr.ips: build/ips.o build/twoplayer-CHR-01.chr.ips.o
+build/twoplayer-CHR-01.chr: build/tetris-CHR-01.chr
+ifeq "$(PAL)" "1"
+build/twoplayer.nes: build/twoplayer-pal.nes.cfg
+else
+build/twoplayer.nes: twoplayer.nes.cfg
+endif
+build/twoplayer.nes: build/tetris.o build/twoplayer-tetris-PRG.o build/tetris-ram.o build/twoplayer.o build/rle.o build/fastlegal.ips
+	ld65 $(LDFLAGS) -Ln $(basename $@).lbl --dbgfile $(basename $@).dbg -o $@ -C $(filter %.cfg,$^) $(filter %.o,$^)
 	# If the first time fails, run it a second time to display output
-	flips --apply $< $(word 2,$^) $@ > /dev/null || flips --apply $< $(word 2,$^) $@
-	flips --create $(word 2,$^) $@ build/$*.dist.ips > /dev/null
+	flips --apply build/fastlegal.ips $@ > /dev/null || flips --apply build/fastlegal.ips $@ || (rm $@; false)
+build/twoplayer.dist.ips: build/tetris.nes build/twoplayer.nes
+	flips --create $^ $@ > /dev/null
+build/twoplayer-test.test: twoplayer-test.lua build/twoplayer.nes
+build/twoplayer-pal.nes.cfg: twoplayer.nes.cfg ntsc2pal.awk | build
+	awk -f ntsc2pal.awk $< > $@
 
-build/%: %.ips
-	# Second prerequisite is assumed to be source
-	# If the first time fails, run it a second time to display output
-	flips --apply $< $(word 2,$^) $@ > /dev/null || flips --apply $< $(word 2,$^) $@
-	flips --create $(word 2,$^) $@ build/$*.dist.ips > /dev/null
 
 build/%.chrs/fake: %.chr | build
 	[ -d build/$*.chrs ] || mkdir build/$*.chrs
@@ -86,36 +126,9 @@ build/%.chrs/fake: %.chr | build
 build/%.rle: % rle-enc.awk | build
 	xxd -ps -c1 $< | LC_ALL=C awk -f rle-enc.awk | xxd -ps -c1 -r > $@
 
-# There are tools to split apart the iNES file, like
-# https://github.com/taotao54321/ines, but they would require an additional
-# setup step for the user to download/run.
-build/tetris-PRG.bin: tetris.nes | build
-	tail -c +17 $< | head -c 32768 > $@
-build/tetris-CHR-00.chr: tetris.nes | build
-	tail -c +32785 $< | head -c 8192 > $@
-build/tetris-CHR-01.chr: tetris.nes | build
-	tail -c +40977 $< | head -c 8192 > $@
 
-build/game_palette.pal: build/tetris-PRG.bin
-	# +3 for buildCopyToPpu header
-	tail -c +$$((16#ACF3 - 16#8000 + 3 + 1)) $< | head -c 16 > $@
-build/menu_palette.pal: build/tetris-PRG.bin
-	# +3 for buildCopyToPpu header
-	tail -c +$$((16#AD2B - 16#8000 + 3 + 1)) $< | head -c 16 > $@
-build/game_nametable.nam: build/tetris-PRG.bin
-	tail -c +$$((16#BF3C - 16#8000 + 1)) $< | head -c $$((1024/32*35)) | LC_ALL=C awk 'BEGIN {RS=".{35}";ORS=""} {print substr(RT, 4)}' > $@
-build/level_menu_nametable.nam: build/tetris-PRG.bin
-	tail -c +$$((16#BADB - 16#8000 + 1)) $< | head -c $$((1024/32*35)) | LC_ALL=C awk 'BEGIN {RS=".{35}";ORS=""} {print substr(RT, 4)}' > $@
-
-build/%.s: %.bin %.info Makefile | build
-	da65 -i $(word 2,$^) -o $@ $<
-
-build/tetris.inc: build/tetris.nes
-	sort build/tetris.lbl | sed -E -e 's/al 00(.{4}) .(.*)/\2 := $$\1/' | uniq > $@
-
-build/tetris-ram.s: tetris-PRG.info tetris-ram.awk | build
-	awk -f tetris-ram.awk $< > $@
-
+custom: build/custom.nes
+build/custom.nes: build/taus.ips build/highscores.ips build/playerid.ips
 build/custom.nes: build/tetris.nes
 	cp $< $@.tmp
 	for ips in $(filter %.ips,$^); do \
@@ -124,52 +137,75 @@ build/custom.nes: build/tetris.nes
 	mv $@.tmp $@
 	flips --create $< $@ build/custom.dist.ips > /dev/null
 
-test: tetris.nes build/tetris.nes build/taus.nes
-	diff tetris.nes build/tetris.nes
-	fceux --no-config 1 --fullscreen 0 --sound 0 --frameskip 100 --loadlua taus-test.lua build/taus.nes
-	fceux --no-config 1 --fullscreen 0 --sound 0 --frameskip 100 --loadlua chart-test.lua build/taus.nes
-	# fceux saves some of the configuration, so restore what we can
-	fceux --no-config 1 --sound 1 --frameskip 0 --loadlua testing-reset.lua build/taus.nes
+# There are tools to split apart the iNES file, like
+# https://github.com/taotao54321/ines, but they would require an additional
+# setup step for the user to download/run.
+build/tetris-PRG.bin: tetris.nes | build
+	tail -c +17 $< | head -c 32768 > $@
+build/tetris-pal-PRG.bin: tetris-pal.nes | build
+	tail -c +17 $< | head -c 32768 > $@
+build/tetris-CHR-00.chr: tetris.nes | build
+	tail -c +32785 $< | head -c 8192 > $@
+build/tetris-CHR-01.chr: tetris.nes | build
+	tail -c +40977 $< | head -c 8192 > $@
 
-clean:
-	[ ! -d build/ ] || rm -r build/
+build/tetris-pal-PRG.info: tetris-PRG.info ntsc2pal.awk | build
+	awk -f ntsc2pal.awk $< > $@
+build/tetris-pal.nes.cfg: tetris.nes.cfg ntsc2pal.awk | build
+	awk -f ntsc2pal.awk $< > $@
+build/tetris-pal.nes: build/tetris.o build/tetris-CHR.o build/tetris-pal-PRG.o build/tetris-ram.o
+build/tetris-pal-PRG.o: build/tetris-pal-PRG.s
 
-dis: build/tetris-PRG.s
-tetris: build/tetris.nes
-taus: build/taus.nes
-screens: build/screens.nes
-custom: build/custom.nes
-handicap: build/handicap.nes
-twoplayer: build/twoplayer.nes build/twoplayer.dist.ips
-
-# These are simply aliases
-.PHONY: all dis tetris taus screens custom handicap twoplayer
-# These are "true" phonies, and always execute something
-.PHONY: test clean
-
-.SUFFIXES:
-
-ifneq "$(V)" "1"
-.SILENT:
+ifeq "$(PAL)" "1"
+build/tetris-PRG.s: build/tetris-pal-PRG.s
+	cp $< $@
+build/tetris.nes: build/tetris-pal.nes
+	cp $< $@
+	cp $(basename $<).dbg $(basename $@).dbg
+	cp $(basename $<).lbl $(basename $@).lbl
 endif
 
-include $(wildcard build/*.d)
+build/game_palette.pal: build/tetris-PRG.bin
+	# +3 for buildCopyToPpu header
+	tail -c +$$((0xACF3 - 0x8000 + 3 + 1)) $< | head -c 16 > $@
+build/menu_palette.pal: build/tetris-PRG.bin
+	# +3 for buildCopyToPpu header
+	tail -c +$$((0xAD2B - 0x8000 + 3 + 1)) $< | head -c 16 > $@
+build/legal_screen_nametable.nam:
+build/legal_screen_nametable.nam.stripe: build/tetris-PRG.bin
+	tail -c +$$((0xADB8 - 0x8000 + 1)) $< | head -c $$((1024/32*35)) > $@
+build/game_nametable.nam.stripe: build/tetris-PRG.bin
+	tail -c +$$((0xBF3C - 0x8000 + 1)) $< | head -c $$((1024/32*35)) > $@
+build/level_menu_nametable.nam.stripe: build/tetris-PRG.bin
+	tail -c +$$((0xBADB - 0x8000 + 1)) $< | head -c $$((1024/32*35)) > $@
 
-.SECONDEXPANSION:
-build/%: %.diff $$(wildcard build/diffhead-$$*)
-	# Last prerequisite is assumed to be basefile
-	###
-	# Sync diffhead and diff for manual edits
-	if [ build/diffhead-$* -nt $@ ]; then \
-		diff -u --label orig --label mod -U 5 -F : build/diffbase-$* build/diffhead-$* > $@.tmp \
-			|| [ $$? -eq 1 ] && mv $@.tmp $<; \
-	elif [ $< -nt $@ -a -e build/diffbase-$* ]; then \
-		cp build/diffbase-$* $@.tmp && patch -s $@.tmp $< && mv $@.tmp build/diffhead-$*; \
-	fi
-	# Now do build-triggered updates
-	if [ ! -e build/diffbase-$* -o $(word $(words $^),$^) -nt build/diffbase-$* ]; then \
-		cp $(word $(words $^),$^) $@.tmpbase && \
-		cp $(word $(words $^),$^) $@.tmphead && patch -s $@.tmphead $< && \
-		mv $@.tmpbase build/diffbase-$* && mv $@.tmphead build/diffhead-$*; \
-	fi
-	echo "; DO NOT MODIFY. Modify diffhead-$* instead" | cat - build/diffhead-$* > $@
+# Converts to/from NES Stripe RLE. Only supports a _very_ limited subset that
+# is fully consecutive, only "literal to right", with each sized 0x20
+build/%: %.stripe
+	LC_ALL=C awk 'BEGIN {RS=".{35}";ORS=""} {print substr(RT, 4)}' $< > $@
+build/%.nam.stripe: %.nam
+	LC_ALL=C awk 'BEGIN {RS=".{32}";ADDR=0x2000} {printf("%c%c%c%s",ADDR/256,ADDR%256,32,RT);ADDR=ADDR+32}' $< > $@
+
+build/tetris.inc: build/tetris.nes
+	sort build/tetris.lbl | sed -E -e 's/al 00(.{4}) .(.*)/\2 := $$\1/' | uniq > $@
+
+build/tetris-ram.s: tetris-PRG.info tetris-ram.awk | build
+	awk -f tetris-ram.awk $< > $@
+
+ifeq "$(PAL)" "1"
+FCEUXFLAGS = --pal 1
+else
+FCEUXFLAGS =
+endif
+build/%.test: %.lua
+	# Second prerequisite is assumed to be a .nes to run
+	fceux --no-config 1 --fullscreen 0 --sound 0 --frameskip 100 $(FCEUXFLAGS) --loadlua $< $(word 2,$^)
+	touch $@
+
+.PHONY: test
+test:
+	# fceux saves some of the configuration, so restore what we can
+	fceux --no-config 1 --sound 1 --frameskip 0 --loadlua testing-reset.lua build/tetris.nes
+
+# include last because it enables SECONDEXPANSION
+include nes.mk

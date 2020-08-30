@@ -2,24 +2,21 @@
 ; Two-player Tetris Mod
 ;
 
-; Normally player 1 uses palette 2 and 6 (zero indexed). The mod uses palettes
-; 1/2 and 5/6, but has player 1 uses palette 1 so that we can just use the
-; "current player" as the palette value.
+; Player 1 uses palette 2 and 6 (zero indexed) and Player 2 uses palette 1
+; and 5. This keeps player 1 palettes the same as original Tetris.
 
 ; TODO:
-; Allow player 2 to pause
 ; Save another RNG to let the behind player catch up.
-; Fix background tetrimino pattern
-; Demo can be two-player if second player presses start and then the system goes idle. But demo playing is broken in 2 player
 ; Allow toggling on garbage?
-; Allow second player to disable next piece display (minor)
 
 ; Integrations:
-; Have handicap support 2 players
 ; Any way to fit stats on screen? Seems like there's no room.
 ; No room for A/B-Type, high score
 
 .include "build/tetris.inc"
+.include "tetris-tbl.inc"
+__TWOPLAYERSIMPORT = 1
+.include "twoplayer.inc"
 
 .ifdef TOURNAMENT_MODE
 .include "tournament.screenlayout.inc"
@@ -34,6 +31,12 @@
 
 
 .segment "GAMEBSS"
+
+; 0 for both players demo
+demo_playingPlayer:
+        .res    1
+demoIndex_player2:
+        .res    1
 
 .ifndef TOURNAMENT_MODE
 .res 1 ; must be at least size 1 to prevent init loop from breaking
@@ -132,6 +135,7 @@ twoplayer_game_nametable:
 .endif
 
 copyRleNametableToPpu:
+        .export copyRleNametableToPpu
         jsr     copyAddrAtReturnAddressToTmp_incrReturnAddrBy2
         ldx     PPUSTATUS
         lda     #$20
@@ -162,55 +166,27 @@ renderPlay_mod:
         and     #$06
         bne     @renderScore
 
-.ifndef NEXT_ON_TOP
-.ifndef TOURNAMENT_MODE
-        lda     #$20
-        sta     PPUADDR
-        lda     #$EF
-        sta     PPUADDR
-.else
         lda     #>INGAME_LAYOUT_P1_LEVEL
         sta     PPUADDR
         lda     #<INGAME_LAYOUT_P1_LEVEL
         sta     PPUADDR
-.endif
-.else
-        lda     #$21
-        sta     PPUADDR
-        lda     #$0F
-        sta     PPUADDR
-.endif
 
         ldx     player1_levelNumber
         lda     levelDisplayTable,x
         jsr     twoDigsToPPU
         jsr     updatePaletteForLevel
 
-.ifndef NEXT_ON_TOP
-.ifndef TOURNAMENT_MODE
-        lda     #$22
-        sta     PPUADDR
-        lda     #$50
-        sta     PPUADDR
-.else
         lda     #>INGAME_LAYOUT_P2_LEVEL
         sta     PPUADDR
         lda     #<INGAME_LAYOUT_P2_LEVEL
         sta     PPUADDR
-.endif
-.else
-        lda     #$21
-        sta     PPUADDR
-        lda     #$F0
-        sta     PPUADDR
-.endif
 
         ldx     player2_levelNumber
         lda     levelDisplayTable,x
         jsr     twoDigsToPPU
         ; updatePaletteForLevel_player2
         lda     player2_levelNumber
-        ldy     #$08
+        ldy     #$04
         .import updatePaletteForLevel_postConf
         jsr     updatePaletteForLevel_postConf
         lda     outOfDateRenderFlags
@@ -231,21 +207,9 @@ renderPlay_mod:
         and     #$04
         beq     @ret
 
-.ifndef NEXT_ON_TOP
-.ifndef TOURNAMENT_MODE
-        lda     #$20
-.else
         lda     #>INGAME_LAYOUT_P1_SCORE
-.endif
-.else
-        lda     #$23
-.endif
         sta     PPUADDR
-.ifndef TOURNAMENT_MODE
-        lda     #$66
-.else
         lda     #<INGAME_LAYOUT_P1_SCORE
-.endif
         sta     PPUADDR
         lda     player1_score+2
         jsr     twoDigsToPPU
@@ -254,21 +218,9 @@ renderPlay_mod:
         lda     player1_score
         jsr     twoDigsToPPU
 
-.ifndef NEXT_ON_TOP
-.ifndef TOURNAMENT_MODE
-        lda     #$20
-.else
         lda     #>INGAME_LAYOUT_P2_SCORE
-.endif
-.else
-        lda     #$23
-.endif
         sta     PPUADDR
-.ifndef TOURNAMENT_MODE
-        lda     #$78
-.else
         lda     #<INGAME_LAYOUT_P2_SCORE
-.endif
         sta     PPUADDR
         lda     player2_score+2
         jsr     twoDigsToPPU
@@ -369,42 +321,48 @@ copyPlayfieldRowToVRAM_fast:
 ; reg a: (input) 0=player 1, 1=player 2
 ;
 copyPlayfieldRowToVRAM4:
+        ; generalCounter is off-limits as it is used by multiple callers of
+        ; updateAudioWaitForNmiAndResetOamStaging, which waits for render.
+        ; Specifically, it breaks Type B via initPlayfieldIfTypeB. While
+        ; generalCounter is used by parts of render (e.g., @renderLevel,
+        ; twoDigsToPPU, updateLineClearingAnimation), those render paths aren't
+        ; taken in cases like Type B init. But this copying code path is taken.
         .export copyPlayfieldRowToVRAM4
         cpx     #$20
         bmi     @skipRts
         rts
 @skipRts:
-        sta     generalCounter3
+        sta     tmp3
         tay
         beq     @playerOne
 ;playerTwo:
         lda     #$0E
-        sta     generalCounter2
+        sta     tmp2
         bne     @continueSetup
 
 @playerOne:
         ldy     numberOfPlayers
         lda     @offsetTable-1,y
-        sta     generalCounter2
+        sta     tmp2
 
 @continueSetup:
         lda     #$04
-        sta     generalCounter
+        sta     tmp1
 ; reg x: vramRow
 ; reg y: playfield offset for row
-; generalCounter: loop counter
-; generalCounter2: VRAM LO offset
-; generalCounter3: 0=player 1, 1=player 2
+; tmp1: loop counter
+; tmp2: VRAM LO offset
+; tmp3: 0=player 1, 1=player 2
 @loop:
         lda     vramPlayfieldRowsHi,x
         sta     PPUADDR
         lda     vramPlayfieldRowsLo,x
         clc
-        adc     generalCounter2
+        adc     tmp2
         sta     PPUADDR
 
         ldy     multBy10Table,x
-        lda     generalCounter3
+        lda     tmp3
         bne     @playerTwoCopy
         .repeat 10,I
         lda     playfield+I,y
@@ -422,7 +380,7 @@ copyPlayfieldRowToVRAM4:
         cpx     #$14
         bpl     @doneWithAllRows
 @vramInRange:
-        dec     generalCounter
+        dec     tmp1
         beq     @ret
         jmp     @loop
 
@@ -444,11 +402,23 @@ copyOamStagingToOam_mod:
         .import after_copyOamStagingToOam_mod
         jmp     after_copyOamStagingToOam_mod
 
-.segment "CODE2"
+gameModeState_updateCountersAndNonPlayerState_mod:
+        .export gameModeState_updateCountersAndNonPlayerState_mod
+        lda     newlyPressedButtons_player2
+        and     #$20
+        beq     @continue
+        lda     displayNextPiece
+        eor     #$02
+        sta     displayNextPiece
+@continue:
+        lda     newlyPressedButtons_player1
+        and     #$20
+        rts
 
 stageSpriteForNextPiece_player1_mod:
         .export stageSpriteForNextPiece_player1_mod
         lda     displayNextPiece
+        and     #$01
         bne     @ret
         lda     numberOfPlayers
         cmp     #$01
@@ -459,21 +429,9 @@ stageSpriteForNextPiece_player1_mod:
         sta     spriteYOffset
         jmp     @stage
 @twoPlayers:
-.ifndef NEXT_ON_TOP
-.ifndef TOURNAMENT_MODE
-        lda     #$78
-        sta     spriteXOffset
-        lda     #$53
-.else
         lda     #INGAME_LAYOUT_P1_PREVIEW_X
         sta     spriteXOffset
         lda     #INGAME_LAYOUT_P1_PREVIEW_Y
-.endif
-.else
-        lda     #6*8
-        sta     spriteXOffset
-        lda     #3*8
-.endif
         sta     spriteYOffset
 @stage:
         .importzp player1_nextPiece
@@ -487,6 +445,8 @@ stageSpriteForNextPiece_player1_mod:
 
 savePlayer2State_mod:
         .export savePlayer2State_mod
+        ; fix recent result of stageSpriteForCurrentPiece
+        jsr     adjustLast4SpritesInOamPlayer1PaletteToPlayer2
         jsr     savePlayer2State
         jsr     stageSpriteForNextPiece_player2
 
@@ -508,41 +468,30 @@ savePlayer2State_mod:
 
 stageSpriteForNextPiece_player2:
         lda     displayNextPiece
+        and     #$02
         bne     @ret
-.ifndef NEXT_ON_TOP
-.ifndef TOURNAMENT_MODE
-        lda     #$80
-        sta     spriteXOffset
-        lda     #$AB
-.else
         lda     #INGAME_LAYOUT_P2_PREVIEW_X
         sta     spriteXOffset
         lda     #INGAME_LAYOUT_P2_PREVIEW_Y
-.endif
-.else
-        lda     #24*8
-        sta     spriteXOffset
-        lda     #3*8
-.endif
         sta     spriteYOffset
         .importzp player2_nextPiece
         ldx     player2_nextPiece
         lda     orientationToSpriteTable,x
         sta     spriteIndexInOamContentLookup
-        jmp     loadSpriteIntoOamStaging_player2
+        jsr     loadSpriteIntoOamStaging
+        jsr     adjustLast4SpritesInOamPlayer1PaletteToPlayer2
 
 @ret:   rts
 
-
-loadSpriteIntoOamStaging_player2:
+adjustLast4SpritesInOamPlayer1PaletteToPlayer2:
         lda     oamStagingLength
-        sta     generalCounter3
-        jsr     loadSpriteIntoOamStaging
-        ldx     generalCounter3
+        sec
+        sbc     #4*4
+        tax
 @adjustSprite:
         inx
         inx
-        inc     oamStaging,x
+        dec     oamStaging,x
         inx
         inx
         cpx     oamStagingLength
@@ -589,6 +538,111 @@ pickRandomTetrimino_mod:
         jsr     generateNextPseudorandomNumber
         rts
 
+
+isStartNewlyPressed:
+        .export isStartNewlyPressed
+        lda     newlyPressedButtons_player1
+        ora     newlyPressedButtons_player2
+        and     #$10
+        cmp     #$10
+        rts
+
+
+.segment "CODE2"
+
+legal_screen_nametable_rle:
+        .export legal_screen_nametable_rle
+        .incbin "build/legal_screen_nametable.nam.rle"
+
+demo_pollController_mod_after := $9D66
+demo_pollController_mod_skip := $9D6A
+demo_pollController_mod:
+        .export demo_pollController_mod
+        jsr     pollController
+        lda     newlyPressedButtons_player1
+        ora     newlyPressedButtons_player2
+        and     #$10
+        bne     @ret
+
+        lda     numberOfPlayers
+        cmp     #$02
+        bne     @done
+        lda     demo_playingPlayer
+        cmp     #$01
+        beq     @player1Playing
+        cmp     #$02
+        beq     @player2Playing
+
+        ; check for starting player
+        lda     newlyPressedButtons_player1
+        bne     @startPlayer1
+        lda     newlyPressedButtons_player2
+        beq     @bothPlayersDemo
+
+@startPlayer2:
+        lda     #$02
+        sta     demo_playingPlayer
+@player2Playing:
+@done:
+        lda     #$00
+@ret:
+        jmp     demo_pollController_mod_after
+
+@startPlayer1:
+        inc     demo_playingPlayer
+@player1Playing:
+        ; copy player1 input to player2
+        lda     newlyPressedButtons_player1
+        sta     newlyPressedButtons_player2
+        lda     heldButtons_player1
+        sta     heldButtons_player2
+        jsr     demo_pollController_mod_skip
+        ; now swap player1 and player2 input
+        lda     newlyPressedButtons_player2
+        sta     tmp1
+        lda     newlyPressedButtons_player1
+        sta     newlyPressedButtons_player2
+        lda     tmp1
+        sta     newlyPressedButtons_player1
+
+        lda     heldButtons_player2
+        sta     tmp1
+        lda     heldButtons_player1
+        sta     heldButtons_player2
+        lda     tmp1
+        sta     heldButtons_player1
+        rts
+
+@bothPlayersDemo:
+        jsr     demo_pollController_mod_skip
+        lda     newlyPressedButtons_player1
+        sta     newlyPressedButtons_player2
+        lda     heldButtons_player1
+        sta     heldButtons_player2
+        rts
+
+
+chooseNextTetrimino_mod:
+        .export chooseNextTetrimino_mod
+        ; Assume that when demoIndex is 0/1, this is being called from
+        ; gameModeState_initGameState and that it applies to both players
+        lda     demoIndex
+        cmp     #$02
+        bmi     @bothPlayers
+        lda     activePlayer
+        cmp     #$01
+        bne     @player2
+        ldx     demoIndex
+        inc     demoIndex
+        rts
+@bothPlayers:
+        inc     demoIndex
+@player2:
+        ldx     demoIndex_player2
+        inc     demoIndex_player2
+        rts
+
+
 gameMode_levelMenu_nametable_mod:
         .export gameMode_levelMenu_nametable_mod
         jsr     bulkCopyToPpu
@@ -618,8 +672,8 @@ gameMode_levelMenu_nametable_mod:
 gameMode_levelMenu_processPlayer1Navigation_processPlayer2:
         .export gameMode_levelMenu_processPlayer1Navigation_processPlayer2
         lda     newlyPressedButtons_player2
-        cmp     #$10
-        bne     @checkBPressed
+        and     #$90    ; Start or A. A is required for Famicom
+        beq     @checkBPressed
         lda     numberOfPlayers
         cmp     #$01
         bne     @checkBPressed
@@ -643,24 +697,17 @@ gameMode_levelMenu_processPlayer1Navigation_processPlayer2:
         jmp     gameMode_levelMenu_processPlayer1Navigation
 
 player2PressStartPatch:
+        set_tbl $0000
         .byte   $20,$A4,$18
-        .byte   $FF,$FF,$FF,$FF,$FF
-        .byte   $19,$02,$FF ; P2
-        .byte   $19,$1B,$0E,$1C,$1C,$FF ; PRESS
-        .byte   $1C,$1D,$0A,$1B,$1D,$52 ; START!
-        .byte   $FF,$FF,$FF,$FF
+        .byte   "     P2 PRESS START!    "
         .byte   $FF
 player1ActivePatch:
         .byte   $20,$A4,$18
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
-        .byte   $19,$15,$0A,$22,$0E,$1B,$FF,$01
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   "        PLAYER 1        "
         .byte   $FF
 player2ActivePatch:
         .byte   $20,$A4,$18
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
-        .byte   $19,$15,$0A,$22,$0E,$1B,$FF,$02
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   "        PLAYER 2        "
         .byte   $FF
 
 gameMode_levelMenu_processPlayer2Navigation:
@@ -698,11 +745,13 @@ gameMode_levelMenu_processPlayer2Navigation:
         lda     selectingLevelOrHeight
         sta     originalY
         lda     newlyPressedButtons_player2
-        cmp     #$10
-        bne     @checkBPressed
+        ; allow player1 to press start for Famicom
+        ora     newlyPressedButtons_player1
+        and     #$10
+        beq     @checkBPressed
         lda     heldButtons_player2
-        cmp     #$90
-        bne     @startAndANotPressed
+        and     #$80
+        beq     @startAndANotPressed
         lda     player2_startLevel
         clc
         adc     #$0A
@@ -781,6 +830,11 @@ highScoreEntryScreen_get_player:
         jsr     loadSpriteIntoOamStaging
         ldx     tmp3
         beq     @ret
+        ; copy start presses from player1 to player2 for famicom
+        lda     newlyPressedButtons_player1
+        and     #$10    ; start
+        ora     newlyPressedButtons_player2
+        sta     newlyPressedButtons_player2
         ldx     #$01
 @ret:
         rts
@@ -856,6 +910,10 @@ updateMusicSpeed_playerDied:
         jsr     setMusicTrack
         rts
 
+;--------------------------------------------------------------------
+; Tournament Mode Mod - additional code
+;--------------------------------------------------------------------
+.ifdef  TOURNAMENT_MODE
 ;this is the update of stats for the tournament play mode
 statsPerBlock_tournamentMode:
         .export statsPerBlock_tournamentMode
@@ -1314,3 +1372,5 @@ calculateTetrisRateBCD:
         ora     tournamentTmp5
         sta     tmp2
         rts
+
+.endif
