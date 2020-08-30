@@ -10,13 +10,32 @@ building NES ips/nes files, and a LUA-based unit/integration test helpers.
 
 Pre-built IPS mod files are available in the
 [releases section of GitHub](https://github.com/ejona86/taus/releases). They
-can be applied to the USA Tetris ROM, commonly known as "Tetris (U) [!].nes".
-The ROM has CRC32 `6d72c53a`, MD5 `ec58574d96bee8c8927884ae6e7a2508`, and
-SHA1 `77747840541bfc62a28a5957692a98c550bd6b2b`. Ignoring the 16 byte iNES
-header (`tail -c +17 tetris.nes > no-header.nes`), it has CRC32 `1394f57e`,
-MD5 `5b0e571558c8c796937b96af469561c6`, and
-SHA1 `fd9079cb5e8479eb06d93c2ae5175bfce871746a`. It is generally okay if the
-iNES header is different.
+must be applied to the USA Tetris ROM:
+
+```
+Database match: Tetris (USA)
+Database: No-Intro: Nintendo Entertainment System (v. 20180803-121122)
+File SHA-1: 77747840541BFC62A28A5957692A98C550BD6B2B
+File CRC32: 6D72C53A
+ROM SHA-1: FD9079CB5E8479EB06D93C2AE5175BFCE871746A
+ROM CRC32: 1394F57E
+```
+
+Or the Europe Tetris ROM:
+
+```
+Database match: Tetris (Europe)
+Database: No-Intro: Nintendo Entertainment System (v. 20180803-121122)
+File SHA-1: 817169B819AADAAE52CCE6B3D8D2FC24270566D7
+File CRC32: 8319B091
+ROM SHA-1: 66883B9EDDEC933E36B6BFF0479CEFD2434FFB40
+ROM CRC32: FDFF80D5
+```
+
+You can use [Hasher-js](https://www.romhacking.net/hash/) or [ROM
+Hasher](https://www.romhacking.net/utilities/1002/) to verify your ROM matches.
+It is generally okay if the "ROM" checksum matches, but the "File" checksum
+differs. But note that `make test` will fail.
 
 ## TAUS
 
@@ -62,7 +81,29 @@ The twoplayer mod allows two simultaneous players to play while receiving the
 same pieces. Garbage is not sent between players.
 
 There are two variations of the mod. One shows the next piece on the side,
-which makes it easier to see with peripheral vision. The other shows it on top, which makes it clearer at-a-glance which next piece belongs to which player.
+which makes it easier to see with peripheral vision. The other shows it on top,
+which makes it clearer at-a-glance which next piece belongs to which player.
+
+## Handicap
+
+[![Selection](media/handicap-selection.thumb.png)](media/handicap-selection.aspect.png)
+[![In-game](media/handicap-ingame.thumb.png)](media/handicap-ingame.aspect.png)
+
+The handicap mod provides a height-select for Type A. Instead of Type B's
+garbage within the height area the area is simply off-limits and unusable.
+
+This mod was originally created as a training aid. When used with the twoplayer
+mod it can level the playing field.
+
+## Player ID
+
+[![In-game](media/playerid-ingame.thumb.png)](media/playerid-ingame.aspect.png)
+
+The playerid mod displays an identifier 1-7 at the top-right of the play
+screen, which can be chosen by pressing Select at the level-select screen.
+
+The identifier is intended to help identify the game in a recording, like
+determining which player was playing.
 
 ## How to build
 
@@ -72,10 +113,14 @@ that have not yet been included in a release.
 Dependencies (should be in PATH):
 1. [Flips](https://github.com/Alcaro/Flips). [Flips
    1.31](https://www.smwcentral.net/?p=section&a=details&id=11474) is fine
-2. [cc65](https://cc65.github.io)
-3. GNU Make. Windows users can use `make.exe` from
-   [UnxUpdates.zip](http://unxutils.sourceforge.net/) (just the one file) or
-   [GnuWin32 Make](http://gnuwin32.sourceforge.net/packages/make.htm)
+2. [cc65](https://cc65.github.io/getting-started.html). Starting in Debian 10
+   (Buster) and Ubuntu 18.04 (Bionic) a package is available via
+   `sudo apt install cc65`. The Fedora package is available via
+   `sudo dnf install cc65`. Arch Linux has an
+   [AUR package](https://aur.archlinux.org/packages/cc65/) available.
+3. GNU Make. Windows users can use `make.exe` (just the one file) from the
+   `bin/` folder of `make-*-without-guile-w32-bin.zip` available at
+   [ezwinports](https://sourceforge.net/projects/ezwinports/files/)
 4. GNU Coreutils and Sed. These are standard on Linux. On Windows they are
    provided by [Git for Windows](https://git-scm.com/download/win) when using
    the "Git Bash" command line. Note that it uses a Unix directory structure;
@@ -87,9 +132,10 @@ On Windows, to modify your PATH, run `SystemPropertiesAdvanced.exe`. On the
 changes to take effect.
 
 Manual prep:
-1. Copy tetris ROM to `tetris.nes`. If the iNES header is different you can
-   still use the ROM, but you need to adjust the header in tetris.s. Ignore
-   iNES header issues for now. `$ make test` will fail if this is a problem.
+1. Copy tetris ROM to `tetris.nes` in the `taus` folder. If the iNES header is
+   different than mentioned above you can still use the ROM, but you need to
+   adjust the header in `tetris.s` to match your rom to make `$ make test`
+   happy
 
 Use `$ make` to build artifacts into `build/`, which includes disassembling
 into `build/tetris-PRG.s`. `$ make test` verifies the reassembled version

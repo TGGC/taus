@@ -2,11 +2,13 @@ GLOBAL {
   STARTADDR $8000;
 };
 
-SEGMENT { START $8000; END $D6C8; NAME "PRG_chunk1"; };
+SEGMENT { START $8000; END $ADB7; NAME "PRG_chunk1"; };
+SEGMENT { START $ADB8; END $B218; NAME "legal_screen_nametable"; };
+SEGMENT { START $B219; END $D6C8; NAME "PRG_chunk2"; };
 SEGMENT { START $D6C9; END $DCFF; NAME "unreferenced_data1"; };
-SEGMENT { START $DD00; END $F9EA; NAME "PRG_chunk2"; };
+SEGMENT { START $DD00; END $F9EA; NAME "PRG_chunk3"; };
 SEGMENT { START $F9EB; END $FEFF; NAME "unreferenced_data4"; };
-SEGMENT { START $FF00; END $FFF9; NAME "PRG_chunk3"; };
+SEGMENT { START $FF00; END $FFF9; NAME "PRG_chunk4"; };
 SEGMENT { START $FFFA; END $FFFF; NAME "VECTORS"; };
 
 # "canon" names match those in https://meatfighter.com/nintendotetrisai/
@@ -25,6 +27,7 @@ LABEL { ADDR $0017; NAME "rng_seed"; SIZE 2; };
 LABEL { ADDR $0019; NAME "spawnID"; }; # canon
 LABEL { ADDR $001A; NAME "spawnCount"; }; # canon
 LABEL { ADDR $0033; NAME "verticalBlankingInterval"; }; # canon
+LABEL { ADDR $0034; NAME "unused_0E"; COMMENT "Always $0E"; };
 LABEL { ADDR $0040; NAME "tetriminoX"; COMMENT "Player data is $20 in size. It is copied here from $60 or $80, processed, then copied back"; }; # canon
 LABEL { ADDR $0041; NAME "tetriminoY"; }; # canon
 LABEL { ADDR $0042; NAME "currentPiece"; COMMENT "Current piece as an orientation ID"; };
@@ -122,6 +125,7 @@ LABEL { ADDR $00CC; NAME "ending_currentSprite"; };
 LABEL { ADDR $00CD; NAME "ending_typeBCathedralFrameDelayCounter"; };
 LABEL { ADDR $00CE; NAME "demo_heldButtons"; }; # canon is heldButtons
 LABEL { ADDR $00CF; NAME "demo_repeats"; }; # canon is repeats
+LABEL { ADDR $00D0; NAME "demo_recording"; COMMENT "Always 0. FF enables recording"; };
 LABEL { ADDR $00D1; NAME "demoButtonsAddr"; SIZE 2; COMMENT "Current address within demoButtonsTable"; };
 LABEL { ADDR $00D3; NAME "demoIndex"; }; # canon
 LABEL { ADDR $00D4; NAME "highScoreEntryNameOffsetForLetter"; COMMENT "Relative to current row"; };
@@ -129,6 +133,7 @@ LABEL { ADDR $00D5; NAME "highScoreEntryRawPos"; COMMENT "High score position 0=
 LABEL { ADDR $00D6; NAME "highScoreEntryNameOffsetForRow"; COMMENT "Relative to start of table"; };
 LABEL { ADDR $00D7; NAME "highScoreEntryCurrentLetter"; };
 LABEL { ADDR $00D8; NAME "lineClearStatsByType"; SIZE 4; COMMENT "bcd. one entry for each of single, double, triple, tetris"; };
+LABEL { ADDR $00DC; NAME "totalScore"; SIZE 3; };
 LABEL { ADDR $00DF; NAME "displayNextPiece"; }; # canon
 LABEL { ADDR $00E0; NAME "AUDIOTMP1"; };
 LABEL { ADDR $00E1; NAME "AUDIOTMP2"; };
@@ -136,9 +141,12 @@ LABEL { ADDR $00E2; NAME "AUDIOTMP3"; };
 LABEL { ADDR $00E3; NAME "AUDIOTMP4"; };
 LABEL { ADDR $00E4; NAME "AUDIOTMP5"; };
 LABEL { ADDR $00E6; NAME "musicChanTmpAddr"; SIZE 2; };
+LABEL { ADDR $00EA; NAME "music_unused2"; COMMENT "Always 0"; };
+LABEL { ADDR $00EB; NAME "soundRngSeed"; SIZE 2; COMMENT "Set, but not read"; };
 LABEL { ADDR $00ED; NAME "currentSoundEffectSlot"; COMMENT "Temporary"; };
 LABEL { ADDR $00EE; NAME "musicChannelOffset"; COMMENT "Temporary. Added to $4000-3 for MMIO"; };
 LABEL { ADDR $00EF; NAME "currentAudioSlot"; COMMENT "Temporary"; };
+LABEL { ADDR $00F1; NAME "unreferenced_buttonMirror"; SIZE 3; COMMENT "Mirror of $F5-F8"; };
 LABEL { ADDR $00F5; NAME "newlyPressedButtons_player1"; COMMENT "$80-a $40-b $20-select $10-start $08-up $04-down $02-left $01-right"; };
 LABEL { ADDR $00F6; NAME "newlyPressedButtons_player2"; };
 LABEL { ADDR $00F7; NAME "heldButtons_player1"; }; # canon is getHeldButtons
@@ -156,13 +164,15 @@ LABEL { ADDR $0500; NAME "playfieldForSecondPlayer"; SIZE $C8; };
 LABEL { ADDR $0680; NAME "musicStagingSq1Lo"; };
 LABEL { ADDR $0681; NAME "musicStagingSq1Hi"; };
 LABEL { ADDR $0682; NAME "audioInitialized"; };
+LABEL { ADDR $0683; NAME "musicPauseSoundEffectLengthCounter"; };
 LABEL { ADDR $0684; NAME "musicStagingSq2Lo"; };
 LABEL { ADDR $0685; NAME "musicStagingSq2Hi"; };
 LABEL { ADDR $0688; NAME "musicStagingTriLo"; };
 LABEL { ADDR $0689; NAME "musicStagingTriHi"; };
 LABEL { ADDR $068A; NAME "resetSq12ForMusic"; COMMENT "0-off. 1-sq1. 2-sq1 and sq2"; };
-LABEL { ADDR $068C; NAME "musicStagingNoiseLo"; };
-LABEL { ADDR $068D; NAME "musicStagingNoiseHi"; };
+LABEL { ADDR $068B; NAME "musicPauseSoundEffectCounter"; COMMENT "Even/odd for sound effect alternating"; };
+LABEL { ADDR $068C; NAME "music_unused"; COMMENT "Always 0"; };
+LABEL { ADDR $068D; NAME "musicPauseScreen"; COMMENT "$05 if in pause screen"; };
 LABEL { ADDR $0690; NAME "musicDataNoteTableOffset"; COMMENT "AKA start of musicData, of size $0A"; };
 LABEL { ADDR $0691; NAME "musicDataDurationTableOffset"; };
 LABEL { ADDR $0692; NAME "musicDataChanPtr"; SIZE $08; };
@@ -176,7 +186,9 @@ LABEL { ADDR $06B4; NAME "musicChanNoteDurationRemaining"; SIZE $04; };
 LABEL { ADDR $06B8; NAME "musicChanNoteDuration"; SIZE $04; };
 LABEL { ADDR $06BC; NAME "musicChanProgLoopCounter"; SIZE $04; COMMENT "As driven by bytecode instructions"; };
 LABEL { ADDR $06C0; NAME "musicStagingSq1Sweep"; SIZE $02; COMMENT "Used as if size 4, but since Tri/Noise does nothing when written for sweep, the other two entries can have any value without changing behavior"; };
-LABEL { ADDR $06C8; NAME "musicChanInhibit"; SIZE $03; COMMENT "Always zero"; };
+LABEL { ADDR $06C3; NAME "musicChanNote"; SIZE $04; };
+LABEL { ADDR $06C7; NAME "musicChanInhibitSetter"; };
+LABEL { ADDR $06C8; NAME "musicChanInhibit"; SIZE $03; COMMENT "If x denotes channel, then channel inhibited when this value contains x+1. Disabled via musicChanInhibitSetter"; };
 LABEL { ADDR $06CC; NAME "musicTrack_dec"; COMMENT "$00-$09"; };
 LABEL { ADDR $06CD; NAME "musicChanVolFrameCounter"; SIZE $04; COMMENT "Pos 0/1 are unused"; };
 LABEL { ADDR $06D1; NAME "musicChanLoFrameCounter"; SIZE $04; COMMENT "Pos 3 unused"; };
@@ -200,12 +212,14 @@ LABEL { ADDR $06F2; NAME "soundEffectSlot2Init"; COMMENT "SQ2 sound effect. For 
 LABEL { ADDR $06F3; NAME "soundEffectSlot3Init"; COMMENT "TRI sound effect. For mapping, see soundEffectSlot3Init_table"; };
 LABEL { ADDR $06F4; NAME "soundEffectSlot4Init"; COMMENT "Unused. Assume meant for DMC sound effect. Uses some data from slot 2"; };
 LABEL { ADDR $06F5; NAME "musicTrack"; COMMENT "$FF turns off music. $00 continues selection. $01-$0A for new selection"; }; # canon says $0B is valid, but it is never used and makes musicDataTableIndex look wrong
+LABEL { ADDR $06F7; NAME "musicDmcGapless"; COMMENT "When non-zero, change sample without clearing buffered sample. Always 0"; };
 LABEL { ADDR $06F8; NAME "soundEffectSlot0Playing"; COMMENT "Used if init is zero"; };
 LABEL { ADDR $06F9; NAME "soundEffectSlot1Playing"; };
 LABEL { ADDR $06FA; NAME "soundEffectSlot2Playing"; };
 LABEL { ADDR $06FB; NAME "soundEffectSlot3Playing"; };
 LABEL { ADDR $06FC; NAME "soundEffectSlot4Playing"; };
 LABEL { ADDR $06FD; NAME "currentlyPlayingMusicTrack"; COMMENT "Copied from musicTrack"; };
+LABEL { ADDR $06FF; NAME "unreferenced_soundRngTmp"; };
 LABEL { ADDR $0700; NAME "highScoreNames"; SIZE $30; };
 LABEL { ADDR $0730; NAME "highScoreScoresA"; SIZE $C; };
 LABEL { ADDR $073C; NAME "highScoreScoresB"; SIZE $C; };
@@ -296,6 +310,7 @@ RANGE { START $9CA5; END $9CAE; TYPE WORDTABLE; NAME "pointsTable"; }; # canon
 RANGE { START $9E83; END $9E84; TYPE ADDRTABLE; }; # bulkCopyToPpu
 RANGE { START $9EA2; END $9EA3; TYPE ADDRTABLE; }; # bulkCopyToPpu
 RANGE { START $9EA7; END $9EA8; TYPE ADDRTABLE; }; # bulkCopyToPpu
+RANGE { START $9FF2; END $9FFD; TYPE CODE; }; # Fix split in PAL by MMC1_Control
 RANGE { START $9FFE; END $9FFF; TYPE ADDRTABLE; }; # bulkCopyToPpu
 RANGE { START $A086; END $A08B; TYPE DBYTETABLE; NAME "highScorePpuAddrTable"; };
 RANGE { START $A08C; END $A0B7; TYPE BYTETABLE; NAME "highScoreCharToTile"; };
@@ -307,7 +322,7 @@ RANGE { START $A225; END $A226; TYPE ADDRTABLE; }; # bulkCopyToPpu
 RANGE { START $A22A; END $A22B; TYPE ADDRTABLE; }; # bulkCopyToPpu
 RANGE { START $A33B; END $A33D; TYPE BYTETABLE; NAME "highScorePosToY"; };
 RANGE { START $A33E; END $A343; TYPE BYTETABLE; NAME "highScoreNamePosToX"; };
-RANGE { START $A42E; END $A44C; TYPE BYTETABLE; NAME "unknown15_table"; };
+RANGE { START $A42E; END $A44C; TYPE BYTETABLE; NAME "typebSuccessGraphic"; };
 RANGE { START $A4B6; END $A4C3; TYPE ADDRTABLE; }; # switch (ending)
 RANGE { START $A540; END $A54B; TYPE ADDRTABLE; }; # switch (??)
 RANGE { START $A735; END $A738; TYPE BYTETABLE; }; # LOTS of tables
@@ -371,8 +386,8 @@ RANGE { START $E045; END $E04A; TYPE ADDRTABLE; NAME "soundEffectSlot2Init_table
 RANGE { START $E0C8; END $E103; TYPE BYTETABLE; NAME "unreferenced_data3"; };
 RANGE { START $E104; END $E107; TYPE BYTETABLE; NAME "soundEffectSlot0_gameOverCurtainInitData"; COMMENT "Referenced by initSoundEffectShared"; };
 RANGE { START $E108; END $E10B; TYPE BYTETABLE; NAME "soundEffectSlot0_endingRocketInitData"; };
-RANGE { START $E10C; END $E10F; TYPE BYTETABLE; NAME "unknown_sq1_data1"; COMMENT "Referenced at LE20F"; };
-RANGE { START $E110; END $E113; TYPE BYTETABLE; NAME "unknown_sq1_data2"; COMMENT "Referenced at LE20F"; };
+RANGE { START $E10C; END $E10F; TYPE BYTETABLE; NAME "music_pause_sq1_even"; COMMENT "Referenced at updateAudio_pause"; };
+RANGE { START $E110; END $E113; TYPE BYTETABLE; NAME "music_pause_sq1_odd"; COMMENT "Referenced at updateAudio_pause"; };
 RANGE { START $E114; END $E117; TYPE BYTETABLE; NAME "soundEffectSlot1_rotateTetriminoInitData"; };
 RANGE { START $E118; END $E11B; TYPE BYTETABLE; NAME "soundEffectSlot1Playing_rotateTetriminoStage3"; };
 RANGE { START $E11C; END $E11F; TYPE BYTETABLE; NAME "soundEffectSlot1_levelUpInitData"; };
@@ -393,9 +408,9 @@ RANGE { START $E14C; END $E14F; TYPE BYTETABLE; NAME "soundEffectSlot3_unknown2I
 RANGE { START $E150; END $E153; TYPE BYTETABLE; NAME "soundEffectSlot1_chirpChirpSq1Vol_table"; };
 RANGE { START $E154; END $E173; TYPE BYTETABLE; NAME "noiselo_table"; COMMENT "See getSoundEffectNoiseNibble"; };
 RANGE { START $E174; END $E193; TYPE BYTETABLE; NAME "noisevol_table"; COMMENT "Similar to noiselo_table. Nibble set to NOISE_VOL bits 0-3 with bit 4 set to 1"; };
-RANGE { START $E4B0; END $E4B8; TYPE BYTETABLE; NAME "sq1vol_unknown2_table"; };
-RANGE { START $E4B9; END $E4D0; TYPE BYTETABLE; NAME "unknown1_table"; };
-RANGE { START $E4F3; END $E510; TYPE BYTETABLE; NAME "unknown18_table"; };
+RANGE { START $E4B0; END $E4B8; TYPE BYTETABLE; NAME "soundEffectSlot1_lineClearing_vol"; };
+RANGE { START $E4B9; END $E4D0; TYPE BYTETABLE; NAME "soundEffectSlot1_lineClearing_lo"; };
+RANGE { START $E4F3; END $E4FC; TYPE BYTETABLE; NAME "soundEffectSlot1_levelUp_lo"; };
 RANGE { START $E57C; END $E57F; TYPE BYTETABLE; NAME "trilo_table"; };
 RANGE { START $E5AB; END $E5CF; TYPE BYTETABLE; }; LABEL { ADDR $E5AB; NAME "noises_table"; SIZE $3; COMMENT "triples of bytes, one for each MMIO"; };
 RANGE { START $E689; END $E694; TYPE BYTETABLE; NAME "loOff9To0FallTable"; COMMENT "Values are signed"; };
@@ -595,7 +610,15 @@ LABEL { ADDR $87C7; NAME "@ret"; };
 LABEL { ADDR $87C8; NAME "savePlayer2State"; COMMENT "Copies $40 to $80"; };
 LABEL { ADDR $87CA; NAME "@whileXNotNeg1"; };
 LABEL { ADDR $87DC; NAME "initPlayfieldIfTypeB"; };
-LABEL { ADDR $87E3; NAME "initPlayfieldForTypeB"; };
+LABEL { ADDR $87E3; NAME "@initPlayfieldForTypeB"; };
+LABEL { ADDR $87E7; NAME "@randomizeRow"; };
+LABEL { ADDR $87FC; NAME "@setRandomBlock"; };
+LABEL { ADDR $8824; NAME "@emptyRandomBlock"; };
+LABEL { ADDR $884A; NAME "@randomDone"; };
+LABEL { ADDR $884C; NAME "@copyPlayfieldToPlayer2"; };
+LABEL { ADDR $885D; NAME "@emptyAboveHeight_player1"; };
+LABEL { ADDR $886D; NAME "@emptyAboveHeight_player2"; };
+LABEL { ADDR $8875; NAME "@ret"; };
 LABEL { ADDR $8884; NAME "gameModeState_updateCountersAndNonPlayerState"; };
 LABEL { ADDR $889C; NAME "@checkSelectButtonPressed"; };
 LABEL { ADDR $88A8; NAME "@ret"; };
@@ -824,7 +847,11 @@ LABEL { ADDR $9E39; NAME "playState_noop"; };
 LABEL { ADDR $9E3A; NAME "endingAnimation_maybe"; };
 LABEL { ADDR $9F95; NAME "render_mode_ending_animation"; };
 LABEL { ADDR $9FF2; NAME "showHighScores"; };
+LABEL { ADDR $9FFB; NAME "showHighScores_real"; COMMENT "not using @-label due to MMC1_Control in PAL"; };
 LABEL { ADDR $9FFF; NAME "MMC1_Control"; };
+LABEL { ADDR $A00C; NAME "@copyEntry"; };
+LABEL { ADDR $A031; NAME "@copyChar"; };
+LABEL { ADDR $A085; NAME "showHighScores_ret"; };
 LABEL { ADDR $A0EE; NAME "handleHighScoreIfNecessary"; COMMENT "Adjusts high score table and handles data entry, if necessary"; };
 LABEL { ADDR $A0FA; NAME "@compareWithPos"; };
 LABEL { ADDR $A124; NAME "@tooSmall"; };
@@ -862,6 +889,9 @@ LABEL { ADDR $A3C4; NAME "@pauseLoop"; };
 LABEL { ADDR $A3DF; NAME "@resume"; };
 LABEL { ADDR $A3EF; NAME "@ret"; };
 LABEL { ADDR $A3F2; NAME "playState_bTypeGoalCheck"; };
+LABEL { ADDR $A403; NAME "@copySuccessGraphic"; };
+LABEL { ADDR $A411; NAME "@graphicCopied"; };
+LABEL { ADDR $A42B; NAME "@ret"; };
 LABEL { ADDR $A44D; NAME "sleep_for_14_vblanks"; };
 LABEL { ADDR $A451; NAME "@loop"; };
 LABEL { ADDR $A459; NAME "sleep_for_a_vblanks"; };
@@ -919,7 +949,7 @@ LABEL { ADDR $AA8A; NAME "copyCurrentScrollAndCtrlToPPU"; };
 LABEL { ADDR $AA98; NAME "bulkCopyToPpu"; };
 LABEL { ADDR $AAF2; NAME "copyToPpu"; COMMENT "Address to read from stored in tmp1/2"; };
 LABEL { ADDR $AB21; NAME "copyAddrAtReturnAddressToTmp_incrReturnAddrBy2"; };
-LABEL { ADDR $AB47; NAME "generateNextPseudorandomNumber"; }; # canon
+LABEL { ADDR $AB47; NAME "generateNextPseudorandomNumber"; COMMENT "reg x: zeropage addr of seed; reg y: size of seed"; }; # canon
 LABEL { ADDR $AB57; NAME "@updateNextByteInSeed"; };
 LABEL { ADDR $AB5E; NAME "copyOamStagingToOam"; COMMENT "canon is initializeOAM"; };
 LABEL { ADDR $AB69; NAME "pollController_actualRead"; };
@@ -953,7 +983,8 @@ LABEL { ADDR $E072; NAME "computeSoundEffMethod"; COMMENT "input a: index-1 into
 LABEL { ADDR $E07B; NAME "@whileYNot2TimesA"; };
 LABEL { ADDR $E08E; NAME "@ret"; };
 LABEL { ADDR $E092; NAME "@copyAddr"; };
-LABEL { ADDR $E09E; NAME "unreferenced_code1"; };
+LABEL { ADDR $E09E; NAME "unreferenced_soundRng"; };
+LABEL { ADDR $E0B0; NAME "@insertRandomBit"; };
 LABEL { ADDR $E0B5; NAME "advanceAudioSlotFrame"; COMMENT "Z=0 when returned means disabled"; };
 LABEL { ADDR $E0C7; NAME "@ret"; };
 LABEL { ADDR $E194; NAME "updateSoundEffectSlot2"; };
@@ -966,6 +997,10 @@ LABEL { ADDR $E1C8; NAME "@computeAndExecute"; };
 LABEL { ADDR $E1CE; NAME "@primaryIsEmpty"; };
 LABEL { ADDR $E1D7; NAME "updateSoundEffectSlotShared_rts"; };
 LABEL { ADDR $E1E5; NAME "initAudioAndMarkInited"; };
+LABEL { ADDR $E1EF; NAME "updateAudio_pause"; };
+LABEL { ADDR $E20F; NAME "@tableChosen"; };
+LABEL { ADDR $E212; NAME "@incAndRet"; };
+LABEL { ADDR $E215; NAME "@ret"; };
 LABEL { ADDR $E216; NAME "updateAudio"; COMMENT "Disables APU frame interrupt"; };
 LABEL { ADDR $E23D; NAME "@clearSoundEffectSlotsInit"; };
 LABEL { ADDR $E244; NAME "soundEffectSlot2_makesNoSound"; };
@@ -1017,8 +1052,10 @@ LABEL { ADDR $E473; NAME "soundEffectSlot1_menuScreenSelectInit"; };
 LABEL { ADDR $E481; NAME "soundEffectSlot1_menuScreenSelectPlaying"; };
 LABEL { ADDR $E4EC; NAME "soundEffectSlot1_levelUpInit"; };
 LABEL { ADDR $E4D1; NAME "soundEffectSlot1_levelUpPlaying"; };
+LABEL { ADDR $E4FD; NAME "unreferenced_code_soundEffectSlot1"; };
 LABEL { ADDR $E513; NAME "soundEffectSlot2_lowBuzz"; COMMENT "Unused"; };
 LABEL { ADDR $E50B; NAME "soundEffectSlot2_mediumBuzz"; COMMENT "Unused"; };
+LABEL { ADDR $E51B; NAME "soundEffectSlot2_start"; };
 LABEL { ADDR $E534; NAME "soundEffectSlot3_donk"; COMMENT "Unused"; };
 LABEL { ADDR $E53B; NAME "soundEffectSlot3Playing_advance"; };
 LABEL { ADDR $E540; NAME "soundEffectSlot3Playing_stop"; };
@@ -1097,7 +1134,7 @@ LABEL { ADDR $E966; NAME "@checkChanControl"; COMMENT "If any of 5 low bits of c
 LABEL { ADDR $E98C; NAME "@useDirectVolume"; };
 LABEL { ADDR $E98E; NAME "@setMmio"; };
 LABEL { ADDR $E9A3; NAME "@copyDurationToRemaining"; };
-LABEL { ADDR $E9AC; NAME "@channelInhibited"; COMMENT "Never triggered"; };
+LABEL { ADDR $E9AC; NAME "@channelInhibited"; };
 LABEL { ADDR $E9B2; NAME "@applyDurationForTri"; COMMENT "input y: duration of 60Hz frames. TRI has no volume control. The volume MMIO for TRI goes to a linear counter. While the length counter can be disabled, that doesn't appear possible for the linear counter."; };
 LABEL { ADDR $E9C0; NAME "@useDuration"; };
 LABEL { ADDR $E9C3; NAME "@highCtrlImpliesOn"; };

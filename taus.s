@@ -60,24 +60,8 @@ chartDrawn:
 
 .segment "CODE"
 
-renderMod:
-        jsr     render
-
-        lda     copyToPpuDuringRenderAddr+1
-        beq     @ret
-        sta     tmp2
-        lda     copyToPpuDuringRenderAddr
-        sta     tmp1
-        jsr     copyToPpu
-        lda     #$00
-        sta     copyToPpuDuringRenderAddr
-        sta     copyToPpuDuringRenderAddr+1
-@ret:
-        rts
-
 initGameState_mod:
 .import __GAMEBSS_SIZE__, __GAMEBSS_RUN__
-        jsr     memset_page
         lda     #$00
         ldx     #<__GAMEBSS_SIZE__
 @clearByte:
@@ -147,6 +131,8 @@ initGameState_mod:
         bne     @initTestEffs
 .endif
 .endif
+        ldx     #$0F
+        lda     #$00
         rts
 
 statsPerBlock:
@@ -345,7 +331,7 @@ renderStats:
         bne     @hasTrns
         lda     TRNS+2
         bne     @hasTrns
-        beq     @ret
+        beq     @checkForAddrToCopy
 @hasTrns:
         lda     #$22
         sta     PPUADDR
@@ -357,6 +343,16 @@ renderStats:
         jsr     twoDigsToPPU
         lda     TRNS
         jsr     twoDigsToPPU
+@checkForAddrToCopy:
+        lda     copyToPpuDuringRenderAddr+1
+        beq     @ret
+        sta     tmp2
+        lda     copyToPpuDuringRenderAddr
+        sta     tmp1
+        jsr     copyToPpu
+        lda     #$00
+        sta     copyToPpuDuringRenderAddr
+        sta     copyToPpuDuringRenderAddr+1
 @ret:
         lda     #$00
         sta     $B0
@@ -383,10 +379,14 @@ postGameStats:
 .import chart_attributetable_patch
         cmp     #20-6-2
         bne     @checkInput
+        ; Handled by renderStats
         lda     #<chart_attributetable_patch
         sta     copyToPpuDuringRenderAddr
         lda     #>chart_attributetable_patch
         sta     copyToPpuDuringRenderAddr+1
+        lda     outOfDateRenderFlags
+        ora     #$40
+        sta     outOfDateRenderFlags
 
 @checkInput:
         ; require pressing start independent of score
@@ -394,11 +394,11 @@ postGameStats:
         cmp     #$10
         bne     @ret
         lda     player1_score+2
-        cmp     #$03
+        cmp     playState_updateGameOverCurtain+$63     ; $9A50: #$03, but can be changed by Game Genie
         bcc     @exitGame
         jsr     endingAnimation_maybe
 @exitGame:
-        jmp     $9A64
+        jmp     playState_updateGameOverCurtain+$53     ; $9A64
 @ret:   rts
 
 
@@ -523,47 +523,8 @@ multiplyBy100:
 .segment "GAME_BG"
 
 ; game_nametable
-.byte   $20,$00,$20,$7A,$67,$77,$77,$72,$79,$7A,$78,$75,$7A,$67,$77,$78,$83,$78,$83,$77,$87,$67,$78,$73,$87,$70,$71,$67,$87,$78,$75,$7A,$72,$7A,$67
-.byte   $20,$20,$20,$72,$83,$87,$77,$87,$67,$78,$73,$87,$72,$83,$87,$78,$79,$79,$7A,$87,$78,$84,$7A,$82,$7A,$80,$81,$82,$79,$7A,$87,$78,$83,$78,$85
-.byte   $20,$40,$20,$87,$72,$7A,$87,$78,$84,$7A,$82,$7A,$87,$67,$38,$39,$39,$39,$39,$39,$39,$39,$39,$39,$39,$3A,$38,$39,$39,$39,$39,$39,$39,$3A,$87
-.byte   $20,$60,$20,$67,$77,$38,$39,$39,$39,$39,$39,$39,$3A,$77,$3B,$FF,$15,$12,$17,$0E,$1C,$24,$FF,$FF,$FF,$3C,$3B,$FF,$FF,$FF,$FF,$FF,$FF,$3C,$67
-.byte   $20,$80,$20,$77,$87,$3B,$FF,$24,$1D,$22,$19,$0E,$3C,$77,$3D,$3E,$3E,$3E,$3E,$3E,$3E,$3E,$3E,$3E,$3E,$3F,$3B,$1D,$18,$19,$FF,$FF,$FF,$3C,$77
-.byte   $20,$A0,$20,$80,$7A,$3D,$3E,$3E,$3E,$3E,$3E,$3E,$3F,$87,$30,$31,$31,$31,$31,$31,$31,$31,$31,$31,$31,$32,$3B,$00,$00,$00,$00,$00,$00,$3C,$77
-.byte   $20,$C0,$20,$78,$79,$79,$7A,$67,$70,$71,$67,$78,$79,$73,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$3B,$FF,$FF,$FF,$FF,$FF,$FF,$3C,$87
-.byte   $20,$E0,$20,$79,$7A,$78,$79,$83,$80,$81,$82,$79,$7A,$87,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$3B,$1C,$0C,$18,$1B,$0E,$FF,$3C,$67
-.byte   $21,$00,$20,$73,$38,$39,$39,$39,$39,$39,$39,$39,$39,$3A,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$3B,$00,$00,$00,$00,$00,$00,$3C,$82
-.byte   $21,$20,$20,$77,$3B,$69,$6A,$6B,$6C,$6D,$6E,$6F,$5F,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$3B,$FF,$FF,$FF,$FF,$FF,$FF,$3C,$67
-.byte   $21,$40,$20,$87,$3B,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$3D,$3E,$3E,$3E,$3E,$3E,$3E,$3F,$77
-.byte   $21,$60,$20,$7A,$3B,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$78,$79,$79,$7A,$78,$79,$73,$78,$83
-.byte   $21,$80,$20,$7A,$3B,$0D,$11,$1D,$FF,$00,$00,$00,$FF,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$30,$31,$31,$31,$31,$32,$87,$67,$78
-.byte   $21,$A0,$20,$7A,$3B,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$33,$17,$0E,$21,$1D,$34,$72,$83,$78
-.byte   $21,$C0,$20,$67,$3B,$0B,$1B,$17,$FF,$00,$00,$00,$FF,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$33,$FF,$FF,$FF,$FF,$34,$87,$72,$7A
-.byte   $21,$E0,$20,$77,$3B,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$33,$FF,$FF,$FF,$FF,$34,$78,$83,$70
-.byte   $22,$00,$20,$77,$3B,$0E,$0F,$0F,$FF,$00,$00,$00,$FF,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$33,$FF,$FF,$FF,$FF,$34,$72,$7A,$80
-.byte   $22,$20,$20,$87,$3B,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$33,$FF,$FF,$FF,$FF,$34,$77,$78,$73
-.byte   $22,$40,$20,$71,$3B,$1D,$1B,$1D,$FF,$00,$00,$00,$54,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$35,$36,$36,$36,$36,$37,$87,$67,$77
-.byte   $22,$60,$20,$81,$3B,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$38,$39,$39,$39,$39,$39,$3A,$77,$87
-.byte   $22,$80,$20,$7A,$3B,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$3B,$15,$0E,$1F,$0E,$15,$3C,$77,$78
-.byte   $22,$A0,$20,$7A,$3B,$1D,$1B,$17,$1C,$FF,$FF,$FF,$FF,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$3B,$FF,$FF,$FF,$FF,$FF,$3C,$87,$67
-.byte   $22,$C0,$20,$67,$3B,$FF,$FF,$24,$24,$24,$24,$24,$24,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$3D,$3E,$3E,$3E,$3E,$3E,$3F,$78,$85
-.byte   $22,$E0,$20,$83,$3B,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$67,$78,$75,$7A,$67,$72,$79,$7A,$87
-.byte   $23,$00,$20,$73,$3B,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$74,$7A,$87,$78,$85,$87,$67,$78,$79
-.byte   $23,$20,$20,$77,$3B,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$3C,$33,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$34,$87,$78,$79,$73,$87,$72,$83,$72,$7A
-.byte   $23,$40,$20,$87,$3D,$3E,$3E,$3E,$3E,$3E,$3E,$3E,$3E,$3F,$35,$36,$36,$36,$36,$36,$36,$36,$36,$36,$36,$37,$67,$70,$71,$87,$67,$87,$78,$83,$67
-.byte   $23,$60,$20,$67,$67,$78,$75,$7A,$72,$79,$7A,$67,$78,$73,$78,$73,$67,$72,$7A,$72,$79,$7A,$78,$79,$79,$7A,$77,$80,$81,$78,$85,$67,$78,$79,$83
-.byte   $23,$80,$20,$77,$82,$73,$87,$67,$87,$67,$72,$83,$67,$82,$7A,$77,$77,$77,$67,$87,$67,$70,$71,$72,$7A,$67,$80,$7A,$78,$73,$87,$77,$78,$79,$79
-.byte   $23,$A0,$20,$80,$7A,$87,$78,$84,$7A,$77,$87,$78,$84,$7A,$67,$87,$77,$87,$77,$72,$83,$80,$81,$77,$67,$82,$79,$7A,$67,$77,$78,$83,$72,$7A,$67
-
-;attributes
-.byte   $23,$C0,$20,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
-.byte               $FF,$FF,$FF,$AF,$AF,$EF,$FF,$FF
-.byte               $BF,$2F,$CF,$AA,$AA,$EE,$FF,$FF
-.byte               $FF,$33,$CC,$AA,$AA,$EE,$FF,$FF
-.byte   $23,$E0,$20,$FF,$33,$CC,$AA,$AA,$EE,$FF,$FF
-.byte               $BF,$03,$CC,$AA,$AA,$EE,$FF,$FF
-.byte               $FB,$F2,$FC,$FA,$FA,$FE,$FF,$FF
-.byte               $0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F
-.byte   $FF
+        .incbin "build/taus_game.nam.stripe"
+        .byte   $FF
 
 .segment "STATS_NUMBERHDR"
         ips_hunkhdr     "STATS_NUMBER"
@@ -588,8 +549,9 @@ multiplyBy100:
 
 .segment "JMP_INIT_GAME_STATE"
 
-; at beginning of initGameState, replaces "jsr memset_page"
+; at beginning of initGameState, replaces "ldx #$0F; lda #$00"
         jsr initGameState_mod
+        nop
 
 .segment "JMP_POST_GAME_STATSHDR"
         ips_hunkhdr     "JMP_POST_GAME_STATS"
@@ -599,15 +561,9 @@ multiplyBy100:
 ; within @curtainFinished of playState_updateGameOverCurtain, replacing
 ; "lda player1_score+2; cmp #$03"
         jmp     postGameStats
-        nop
-
-.segment "JMP_RENDER_MODHDR"
-        ips_hunkhdr     "JMP_RENDER_MOD"
-
-.segment "JMP_RENDER_MOD"
-
-; within nmi, replaces "jsr render"
-        jsr     renderMod
+        ; This leaves the cmp cut in half, but we don't jump back to it so this
+        ; is okay. We want to leave the #$03 intact to support Game Genie codes
+        ; that skip the ending animation.
 
 .segment "JMP_RENDER_STATSHDR"
         ips_hunkhdr     "JMP_RENDER_STATS"

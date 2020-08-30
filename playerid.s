@@ -6,111 +6,44 @@
 .include "build/tetris.inc"
 .include "ips.inc"
 
-.segment "JMP_LEVEL_MENU_CHECK_SELECT_PRESSEDHDR"
-        ips_hunkhdr     "JMP_LEVEL_MENU_CHECK_SELECT_PRESSED"
-
 .segment "JMP_LEVEL_MENU_CHECK_SELECT_PRESSED"
+        ips_segment     "JMP_LEVEL_MENU_CHECK_SELECT_PRESSED",gameMode_levelMenu_handleLevelHeightNavigation
 
-; at start of @showSelection, replaces "lda selectingLevelOrHeight; bne @showSelectionLevel"
-        jmp     level_menu_check_select_pressed
+; at gameMode_levelMenu_handleLevelHeightNavigation, replaces "lda newlyPressedButtons; cmp #$01"
+        jsr     level_menu_check_select_pressed
         nop
-afterJmpLevelMenuCheckSelectPressedMod:
-
-.segment "JMP_GAME_SHOW_PLAYERID_SPRITEHDR"
-        ips_hunkhdr     "JMP_GAME_SHOW_PLAYERID_SPRITE"
-
-.segment "JMP_GAME_SHOW_PLAYERID_SPRITE"
-
-.ifdef PLAYERID_SPRITE
-; in branchOnGameMode; replaces "jsr stageSpriteForNextPiece"
-        jsr     game_show_playerid_sprite
-.else
-        jsr     stageSpriteForNextPiece
-.endif
-
-.segment "JMP_GAME_SHOW_PLAYERID_BGHDR"
-        ips_hunkhdr     "JMP_GAME_SHOW_PLAYERID_BG"
 
 .segment "JMP_GAME_SHOW_PLAYERID_BG"
+        ips_segment     "JMP_GAME_SHOW_PLAYERID_BG",gameModeState_initGameBackground_finish
 
-.ifndef PLAYERID_SPRITE
-; in initGameBackground; replaces "jsr twoDigsToPPU"
+; in initGameBackground; replaces "jsr waitForVBlankAndEnableNmi"
         jsr     game_show_playerid_game_mod
-.else
-        jsr     twoDigsToPPU
-.endif
-
-.segment "JMP_MENU_SHOW_PLAYERID_BGHDR"
-        ips_hunkhdr     "JMP_MENU_SHOW_PLAYERID_BG"
 
 .segment "JMP_MENU_SHOW_PLAYERID_BG"
+        ips_segment     "JMP_MENU_SHOW_PLAYERID_BG",render_mode_menu_screens+18 ; $85EC
 
-.ifndef PLAYERID_SPRITE
 ; in render_mode_menu_screens; replaces "sta PPUSCROLL"
         jsr     game_show_playerid_menu_mod
-.else
-        sta     PPUSCROLL
-.endif
 
 .segment "CODE"
+        ips_segment     "CODE",unreferenced_data3,$003C
 
 playerId := $0003
-showSelectionLevel := $855F
 
 level_menu_check_select_pressed:
         lda     newlyPressedButtons
         cmp     #$20
-        bne     level_menu_check_select_pressed_render
-        lda     playerId
-        cmp     #$07
-        beq     reset_playerid
+        bne     @render
         inc     playerId
-        jmp     level_menu_check_select_pressed_render
-reset_playerid:
-        lda     #$00
+        lda     playerId
+        and     #$07
         sta     playerId
-level_menu_check_select_pressed_render:
-.ifdef PLAYERID_SPRITE
-        jsr     stagePlayerIdSprite
-.endif
+@render:
 
-        lda     selectingLevelOrHeight
-        bne     level_menu_check_select_return_level
-        jmp     afterJmpLevelMenuCheckSelectPressedMod
-level_menu_check_select_return_level:
-        jmp     showSelectionLevel
-
-.ifdef PLAYERID_SPRITE
-game_show_playerid_sprite:
-        jsr     stageSpriteForNextPiece
-stagePlayerIdSprite:
-        lda     playerId
-        beq     stagePlayerIdSprite_return
-        ldx     oamStagingLength
-        lda     #$07
-        sta     oamStaging,x
-        inx
-        lda     playerId
-        sta     oamStaging,x
-        inx
-        lda     gameMode
-        cmp     #$03
-        beq     stagePlayerIdSprite_menu
-        lda     #$03
-        jmp     stagePlayerIdSprite_control
-stagePlayerIdSprite_menu:
-        lda     #$00
-stagePlayerIdSprite_control:
-        sta     oamStaging,x
-        inx
-        lda     #$F8
-        sta     oamStaging,x
-        inx
-        stx     oamStagingLength
-stagePlayerIdSprite_return:
+        ; replaced code
+        lda     newlyPressedButtons
+        cmp     #$01
         rts
-
-.else
 
 game_show_playerid_menu_mod:
         sta     PPUSCROLL
@@ -118,20 +51,22 @@ game_show_playerid_menu_mod:
         cmp     #$03    ; level menu
         beq     game_show_playerid_bg
         rts
+
 game_show_playerid_game_mod:
-        jsr     twoDigsToPPU
         lda     playerId
-        bne     game_show_playerid_bg
-        rts
+        beq     @done
+        jsr     game_show_playerid_bg
+@done:
+        jmp     waitForVBlankAndEnableNmi       ; replaced code
+
 game_show_playerid_bg:
         lda     #$20
         sta     PPUADDR
         lda     #$3F
         sta     PPUADDR
         lda     playerId
-        bne     game_show_playerid_bg_display
-        lda     #$82
-game_show_playerid_bg_display:
+        bne     @display
+        lda     #$82    ; hard-coded original select screen tile
+@display:
         sta     PPUDATA
         rts
-.endif
