@@ -21,7 +21,7 @@ build/fastlegal.ips.cfg: build/fastlegal.o
 build/fastlegal.ips: build/fastlegal.o build/ips.o
 build/fastlegal.nes: build/tetris.nes
 
-CAFLAGS = "-g" "-DTOURNAMENT_MODE"
+CAFLAGS = "-g" "-DMAX_MODE"
 LDFLAGS =
 VPATH = build
 

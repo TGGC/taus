@@ -2,6 +2,13 @@
 ; Tetris AUS mod: Actually Useful Stats
 ;
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TETRIS MAX changelog
+
+; fast DAS
+; wallkick to rotate in tight corners
+
+
 .include "build/tetris.inc"
 .include "ips.inc"
 .include "chart.inc"
@@ -517,6 +524,58 @@ multiplyBy100:
         sta     tmp2
         rts
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TETRIS MAX hacks - new code
+
+; new rotation code which allows wall kicks
+tetrisMaxRotate:
+        lda     newlyPressedButtons
+        and     #$c0
+        cmp     #0
+        beq     @rts
+        lda     currentPiece
+        sta     originalY
+        clc
+        lda     currentPiece
+        asl     a
+        tax
+        lda     newlyPressedButtons
+        and     #$80
+        cmp     #$80
+        bne     @aNotPressed
+        inx
+@aNotPressed:
+        lda     rotationTable,x
+        sta     currentPiece
+        jsr     isPositionValid
+        beq     @finalizeRotate
+@tryleft:
+        dec     tetriminoX
+        jsr     isPositionValid
+        beq     @finalizeRotate
+@tryright:
+        inc     tetriminoX
+        inc     tetriminoX
+        jsr     isPositionValid
+        beq     @finalizeRotate
+        dec     tetriminoX
+@undoRotate:
+        lda     originalY
+        sta     currentPiece
+@rts:
+        rts
+@finalizeRotate:
+        lda     #$05
+        sta     soundEffectSlot1Init
+        rts
+
+; new drop code, which allows hard drop
+tetrisMaxDrop:
+jmp     drop_tetrimino
+        
+; TETRIS MAX hacks end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 .segment "GAME_BGHDR"
         ips_hunkhdr     "GAME_BG"
 
@@ -573,6 +632,74 @@ multiplyBy100:
 ; within render_play_digits, after L9639, replaces "lda #$00; sta $B0"
         jsr     renderStats
         nop
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TETRIS MAX hacks - patches
+
+.segment "PREPARE_AUTOREPEATX_CMPHDR"
+        ips_hunkhdr     "PREPARE_AUTOREPEATX_CMP"
+
+.segment "PREPARE_AUTOREPEATX_CMP"
+; change initial DAS delay
+        cmp     #$06
+
+.segment "PREPARE_AUTOREPEATX_LDAHDR"
+        ips_hunkhdr     "PREPARE_AUTOREPEATX_LDA"
+
+.segment "PREPARE_AUTOREPEATX_LDA"
+; change DAS speed
+        lda     #$05
+
+.segment "ROTATE_TETRIMINOHDR"
+        ips_hunkhdr     "ROTATE_TETRIMINO"
+
+.segment "ROTATE_TETRIMINO"
+; jump to new code
+        jmp tetrisMaxRotate
+        
+.segment "DROP_TETRIMINOHDR"
+        ips_hunkhdr     "DROP_TETRIMINO"
+
+.segment "DROP_TETRIMINO"
+; jump to new code
+        jmp tetrisMaxDrop
+        
+.segment "ORIENTATIONTABLEHDR"
+        ips_hunkhdr     "ORIENTATIONTABLE"
+
+.segment "ORIENTATIONTABLE"
+; new orientation table
+;T - 4 orientation
+        .byte   $01,$7B,$FF,$01,$7B,$00,$01,$7B,$01,$00,$7B,$00 ; move down
+        .byte   $FF,$7B,$00,$00,$7B,$00,$00,$7B,$01,$01,$7B,$00
+        .byte   $00,$7B,$FF,$00,$7B,$00,$00,$7B,$01,$01,$7B,$00
+        .byte   $FF,$7B,$00,$00,$7B,$FF,$00,$7B,$00,$01,$7B,$00
+;J - 4 orientation
+        .byte   $FF,$7D,$00,$00,$7D,$00,$01,$7D,$FF,$01,$7D,$00
+        .byte   $00,$7D,$FF,$01,$7D,$FF,$01,$7D,$00,$01,$7D,$01 ; move down
+        .byte   $FF,$7D,$00,$FF,$7D,$01,$00,$7D,$00,$01,$7D,$00
+        .byte   $00,$7D,$FF,$00,$7D,$00,$00,$7D,$01,$01,$7D,$01
+;Z - 2 orientation
+        .byte   $00,$7C,$FF,$00,$7C,$00,$01,$7C,$00,$01,$7C,$01
+        .byte   $FF,$7C,$01,$00,$7C,$00,$00,$7C,$01,$01,$7C,$00
+;O - 1 orientation
+        .byte   $00,$7B,$FF,$00,$7B,$00,$01,$7B,$FF,$01,$7B,$00
+;S - 2 orientation
+        .byte   $00,$7D,$00,$00,$7D,$01,$01,$7D,$FF,$01,$7D,$00
+        .byte   $FF,$7D,$00,$00,$7D,$00,$00,$7D,$01,$01,$7D,$01
+;L - 4 orientation
+        .byte   $FF,$7C,$00,$00,$7C,$00,$01,$7C,$00,$01,$7C,$01
+        .byte   $00,$7C,$FF,$00,$7C,$00,$00,$7C,$01,$01,$7C,$FF
+        .byte   $FF,$7C,$FF,$FF,$7C,$00,$00,$7C,$00,$01,$7C,$00
+        .byte   $00,$7C,$01,$01,$7C,$FF,$01,$7C,$00,$01,$7C,$01 ; move down
+;I - 2 orientation        
+        .byte   $FE,$7B,$00,$FF,$7B,$00,$00,$7B,$00,$01,$7B,$00
+        .byte   $00,$7B,$FE,$00,$7B,$FF,$00,$7B,$00,$00,$7B,$01
+;unused
+        .byte   $00,$FF,$00,$00,$FF,$00,$00,$FF,$00,$00,$FF,$00
+        
+; TETRIS MAX hacks end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 .segment "IPSCHR"
 

@@ -637,6 +637,7 @@ LABEL { ADDR $8973; NAME "@lookupDropSpeed"; }; # canon
 LABEL { ADDR $897E; NAME "@noTableLookup"; }; # canon
 LABEL { ADDR $8989; NAME "@incrementAutorepeatY"; }; # canon
 LABEL { ADDR $89AE; NAME "shift_tetrimino"; };
+LABEL { ADDR $89C8; NAME "@prepareAutorepeatX"; }; # used to fix DAS
 LABEL { ADDR $89D3; NAME "@resetAutorepeatX"; }; # canon
 LABEL { ADDR $89D7; NAME "@buttonHeldDown"; };
 LABEL { ADDR $89EC; NAME "@notPressingRight"; }; # canon
