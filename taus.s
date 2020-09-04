@@ -147,6 +147,9 @@ initGameState_mod:
         rts
 
 statsPerBlock:
+        stx     tmp1
+        jsr     tetrisMaxPieceSpawn
+        ldx     tmp1
         lda     tetriminoTypeFromOrientation,x
         cmp     #$06 ; i piece
         beq     @clearDrought
@@ -531,9 +534,12 @@ multiplyBy100:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; TETRIS MAX hacks - new code
 TMAX_LockDelay          = 30            ; 18
+TMAX_LockDelayDefault   = 5
+TMAX_LockDelayTable     = 10
 TMAX_DASWindUp          = 8
 TMAX_DASRepeat          = 1
-TMAX_FullSpeedLevel     = 1             ; 25
+TMAX_FullSpeedLevel     = 25            ; 25
+
 
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -610,12 +616,21 @@ tetrisMaxDrop:
         tya
         bne     @continueDropping
 @startLocking:
+        lda     fallTimer
+        bmi     @fullLockDelay
+        ;lda     heldButtons
+        ;and     #$03
+        ;bne     @fullLockDelay
+        jmp     writeLockDelay
+@fullLockDelay:
         lda     #TMAX_LockDelay
         sta     autorepeatY
 @rts:
         rts
                                         
 @restartFall:
+        lda     #0
+        sta     autorepeatY
         jsr     writeDropSpeed          ;get currennt drop speed
 @continueDropping:
         lda     fallTimer
@@ -625,9 +640,17 @@ tetrisMaxDrop:
         beq     @notHardDrop
 
 @hardFall:
+        inc     fallTimer
+        bpl     @notFirstStep
+        inc     fallTimer               ;remove the flag
+        lda     #5                      ;on first step piece is locked
+        sta     tetriminoX
+@notFirstStep:
+        dec     fallTimer
+@moveDown:
         inc     tetriminoY
         jsr     isPositionValid
-        beq     @hardFall
+        beq     @moveDown
         dec     tetriminoY
         jmp     @startLocking
 
@@ -641,14 +664,53 @@ tetrisMaxDrop:
 @falling:
         inc     tetriminoY
 writeDropSpeed:
-        lda     #$ff
+        lda     #0
+writeDropSpeedSpecialDefault:
         ldx     levelNumber
         cpx     #TMAX_FullSpeedLevel
         bcs     @fullSpeed
         lda     framesPerDropTable,x
 @fullSpeed:
         sta     fallTimer
+        dec     fallTimer          ; decreasing the time to keep table
         rts
+        
+tetrisMaxFirstPiece:
+        lda     #0
+        sta     player1_autorepeatY
+        sta     player2_autorepeatY
+        lda     #64
+        sta     player1_fallTimer
+        sta     player2_fallTimer
+        rts
+        
+tetrisMaxPieceSpawn:
+        lda     newlyPressedButtons
+        sta     tmp2
+        lda     heldButtons
+        sta     newlyPressedButtons
+        jsr     tetrisMaxRotate
+        lda     tmp2
+        sta     newlyPressedButtons
+        lda     #$ff
+        jsr     writeDropSpeedSpecialDefault
+        rts
+        
+writeLockDelay:
+        lda     #TMAX_LockDelayDefault
+        ldx     levelNumber
+        cpx     #TMAX_LockDelayTable
+        bcs     @fullSpeed
+        lda     tetrisMaxLockDelay,x
+@fullSpeed:
+        sta     autorepeatY
+        rts
+
+
+tetrisMaxLockDelay:
+        .byte   $30,$2B,$26,$21,$1C,$17,$12,$0D
+        .byte   $08,$06
+
         
 ; TETRIS MAX hacks end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -747,6 +809,16 @@ writeDropSpeed:
 .segment "UPDATE_FALLTIMER"
 ; do not change fall timer here anymore
         nop
+        nop
+        nop
+        nop
+        
+.segment "INIT_FIRST_PIECEHDR"
+        ips_hunkhdr     "INIT_FIRST_PIECE"
+
+.segment "INIT_FIRST_PIECE"
+; do not change fall timer here anymore
+        jsr tetrisMaxFirstPiece
         nop
         nop
         nop

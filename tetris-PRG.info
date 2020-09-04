@@ -599,6 +599,7 @@ LABEL { ADDR $867F; NAME "@endOfPpuPatching"; };
 LABEL { ADDR $8693; NAME "gameModeState_initGameBackground_finish"; };
 LABEL { ADDR $86DC; NAME "gameModeState_initGameState"; };
 LABEL { ADDR $86E9; NAME "@initStatsByType"; COMMENT "statsByType"; };
+LABEL { ADDR $8739; NAME "@initFirstPieceDelay"; COMMENT "delays first piece"; };
 LABEL { ADDR $8761; NAME "@skipTypeBInit"; };
 LABEL { ADDR $8776; NAME "makePlayer1Active"; COMMENT "Copies $60 to $40"; };
 LABEL { ADDR $8788; NAME "@copyByteFromMirror"; };
