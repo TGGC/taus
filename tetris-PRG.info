@@ -620,6 +620,7 @@ LABEL { ADDR $885D; NAME "@emptyAboveHeight_player1"; };
 LABEL { ADDR $886D; NAME "@emptyAboveHeight_player2"; };
 LABEL { ADDR $8875; NAME "@ret"; };
 LABEL { ADDR $8884; NAME "gameModeState_updateCountersAndNonPlayerState"; };
+LABEL { ADDR $8892; NAME "@updateFallTimer"; };
 LABEL { ADDR $889C; NAME "@checkSelectButtonPressed"; };
 LABEL { ADDR $88A8; NAME "@ret"; };
 LABEL { ADDR $88AB; NAME "rotate_tetrimino"; };

@@ -7,7 +7,11 @@
 
 ; fast DAS
 ; wallkick to rotate in tight corners
+; hard drop
+; high gravity
 
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 .include "build/tetris.inc"
 .include "ips.inc"
@@ -526,6 +530,16 @@ multiplyBy100:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; TETRIS MAX hacks - new code
+TMAX_LockDelay          = 30            ; 18
+TMAX_DASWindUp          = 8
+TMAX_DASRepeat          = 1
+TMAX_FullSpeedLevel     = 1             ; 25
+
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TETRIS MAX hacks - new code
 
 ; new rotation code which allows wall kicks
 tetrisMaxRotate:
@@ -571,7 +585,70 @@ tetrisMaxRotate:
 
 ; new drop code, which allows hard drop
 tetrisMaxDrop:
-jmp     drop_tetrimino
+        ldy     #1                      ;check if locking
+        inc     tetriminoY
+        jsr     isPositionValid
+        beq     @canFall                ;can fall, keep the 1
+        ldy     #0
+@canFall:
+        dec     tetriminoY              ;put piece back
+        lda     autorepeatY             ;check if lock timer is active
+        beq     @dropping               ;go to normal dropping
+        tya
+        bne     @restartFall
+        lda     heldButtons             ;manual lock?
+        and     #$04
+        bne     @lock                   
+        dec     autorepeatY
+        bne     @rts                    ;locking still running
+@lock:
+        lda     #$02
+        sta     playState
+        jmp     updatePlayfield
+
+@dropping:
+        tya
+        bne     @continueDropping
+@startLocking:
+        lda     #TMAX_LockDelay
+        sta     autorepeatY
+@rts:
+        rts
+                                        
+@restartFall:
+        jsr     writeDropSpeed          ;get currennt drop speed
+@continueDropping:
+        lda     fallTimer
+        bmi     @hardFall
+        lda     newlyPressedButtons
+        and     #$08
+        beq     @notHardDrop
+
+@hardFall:
+        inc     tetriminoY
+        jsr     isPositionValid
+        beq     @hardFall
+        dec     tetriminoY
+        jmp     @startLocking
+
+@notHardDrop:
+        lda     heldButtons
+        and     #$04
+        bne     @falling
+@notSoftDrop:
+        dec     fallTimer
+        bpl     @rts
+@falling:
+        inc     tetriminoY
+writeDropSpeed:
+        lda     #$ff
+        ldx     levelNumber
+        cpx     #TMAX_FullSpeedLevel
+        bcs     @fullSpeed
+        lda     framesPerDropTable,x
+@fullSpeed:
+        sta     fallTimer
+        rts
         
 ; TETRIS MAX hacks end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -641,14 +718,14 @@ jmp     drop_tetrimino
 
 .segment "PREPARE_AUTOREPEATX_CMP"
 ; change initial DAS delay
-        cmp     #$06
+        cmp     #TMAX_DASWindUp
 
 .segment "PREPARE_AUTOREPEATX_LDAHDR"
         ips_hunkhdr     "PREPARE_AUTOREPEATX_LDA"
 
 .segment "PREPARE_AUTOREPEATX_LDA"
 ; change DAS speed
-        lda     #$05
+        lda     #TMAX_DASWindUp-TMAX_DASRepeat
 
 .segment "ROTATE_TETRIMINOHDR"
         ips_hunkhdr     "ROTATE_TETRIMINO"
@@ -663,6 +740,16 @@ jmp     drop_tetrimino
 .segment "DROP_TETRIMINO"
 ; jump to new code
         jmp tetrisMaxDrop
+        
+.segment "UPDATE_FALLTIMERHDR"
+        ips_hunkhdr     "UPDATE_FALLTIMER"
+
+.segment "UPDATE_FALLTIMER"
+; do not change fall timer here anymore
+        nop
+        nop
+        nop
+        nop
         
 .segment "ORIENTATIONTABLEHDR"
         ips_hunkhdr     "ORIENTATIONTABLE"
