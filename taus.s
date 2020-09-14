@@ -147,9 +147,9 @@ initGameState_mod:
         rts
 
 statsPerBlock:
-        stx     tmp1
+        stx     tmp3
         jsr     tetrisMaxPieceSpawn
-        ldx     tmp1
+        ldx     tmp3
         lda     tetriminoTypeFromOrientation,x
         cmp     #$06 ; i piece
         beq     @clearDrought
@@ -533,16 +533,19 @@ multiplyBy100:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; TETRIS MAX hacks - new code
-TMAX_LockDelay          = 30            ; 18
-TMAX_LockDelayDefault   = 5
-TMAX_LockDelayTable     = 10
+TMAX_LockDelayDefault   = 18
+TMAX_LockDelayTable     = 19
 TMAX_DASWindUp          = 8
 TMAX_DASRepeat          = 1
-TMAX_FullSpeedLevel     = 25            ; 25
-
+TMAX_FullSpeedLevel     = 9
 
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+.segment "CODE2HDR"
+        ips_hunkhdr     "CODE2"
+
+.segment "CODE2"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; TETRIS MAX hacks - new code
@@ -558,28 +561,41 @@ tetrisMaxRotate:
         clc
         lda     currentPiece
         asl     a
-        tax
+        tay
         lda     newlyPressedButtons
         and     #$80
         cmp     #$80
         bne     @aNotPressed
-        inx
+        iny
 @aNotPressed:
-        lda     rotationTable,x
+        lda     rotationTable,y
         sta     currentPiece
+@getKickRuleOffset:
+        clc
+        tya
+        asl     a
+        sta     tmp1
         jsr     isPositionValid
         beq     @finalizeRotate
-@tryleft:
+@checkLeftKick:
         dec     tetriminoX
         jsr     isPositionValid
+        bne     @checkRightKick
+        ldy     tmp1
+        ldx     tetrisMaxKickTable,y
+        jsr     isPositionValidExtra
         beq     @finalizeRotate
-@tryright:
+@checkRightKick:
         inc     tetriminoX
         inc     tetriminoX
         jsr     isPositionValid
+        bne     @undoRotate
+        ldy     tmp1
+        ldx     tetrisMaxKickTable+1,y
+        jsr     isPositionValidExtra
         beq     @finalizeRotate
-        dec     tetriminoX
 @undoRotate:
+        dec     tetriminoX
         lda     originalY
         sta     currentPiece
 @rts:
@@ -588,6 +604,77 @@ tetrisMaxRotate:
         lda     #$05
         sta     soundEffectSlot1Init
         rts
+
+; x holds a mask, which pieces need to be checked
+isPositionValidExtra:
+        bmi     @invalid
+        ldy     tetriminoY
+        iny
+        clc
+        tya
+        asl     a
+        sta     generalCounter
+        asl     a
+        asl     a
+        clc
+        adc     generalCounter
+        adc     tetriminoX
+        sta     generalCounter
+        dec     generalCounter
+; Checks center low square within the tetrimino
+@check3Squares:
+        ldy     generalCounter
+        txa
+        and     #4
+        cmp     #0
+        beq     @check2Squares
+        lda     (playfieldAddr),y
+        cmp     #$EF
+        bcc     @invalid
+@check2Squares:
+        iny
+        txa
+        and     #2
+        cmp     #0
+        beq     @check1Squares
+        lda     (playfieldAddr),y
+        cmp     #$EF
+        bcc     @invalid
+@check1Squares:
+        iny
+        txa
+        and     #1
+        cmp     #0
+        beq     @check0Squares
+        lda     (playfieldAddr),y
+        cmp     #$EF
+        bcc     @invalid
+@check0Squares:
+        lda     #$00
+        sta     generalCounter
+        rts
+
+@invalid:
+        lda     #$FF
+        sta     generalCounter
+@rts:
+        rts
+
+tetrisMaxKickTable:
+        ;T
+        .dbyt   $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+        ;J
+        .dbyt   $0002,$0000,$0000,$0000,$0000,$0002,$0100,$0100
+        ;Z
+        .dbyt   $0000,$0000,$0000,$0000
+        ;O
+        .dbyt   $ffff,$ffff
+        ;S
+        .dbyt   $0002,$0002,$0100,$0100
+        ;L
+        .dbyt   $0000,$0200,$0004,$0004,$0200,$0000,$0000,$0000
+        ;I
+        .dbyt   $ffff,$ffff
 
 ; new drop code, which allows hard drop
 tetrisMaxDrop:
@@ -616,15 +703,7 @@ tetrisMaxDrop:
         tya
         bne     @continueDropping
 @startLocking:
-        lda     fallTimer
-        bmi     @fullLockDelay
-        ;lda     heldButtons
-        ;and     #$03
-        ;bne     @fullLockDelay
-        jmp     writeLockDelay
-@fullLockDelay:
-        lda     #TMAX_LockDelay
-        sta     autorepeatY
+        jsr     writeLockDelay
 @rts:
         rts
                                         
@@ -692,6 +771,13 @@ tetrisMaxPieceSpawn:
         jsr     tetrisMaxRotate
         lda     tmp2
         sta     newlyPressedButtons
+        lda     heldButtons
+        and     #$03
+        cmp     #0
+        bne     @noDAS
+        lda     #TMAX_DASWindUp-TMAX_DASRepeat
+        sta     autorepeatX
+@noDAS:
         lda     #$ff
         jsr     writeDropSpeedSpecialDefault
         rts
@@ -708,8 +794,11 @@ writeLockDelay:
 
 
 tetrisMaxLockDelay:
-        .byte   $30,$2B,$26,$21,$1C,$17,$12,$0D
-        .byte   $08,$06
+;        .byte   $30,$2B,$26,$21,$1C,$17,$12,$0D
+;        .byte   $08,$06
+        .byte   $07,$06,$06,$06,$06,$06,$06,$06
+        .byte   $06,$1E,$1E,$1E,$1E,$1E,$16,$16
+        .byte   $16,$16,$16,$16
 
         
 ; TETRIS MAX hacks end
@@ -856,6 +945,19 @@ tetrisMaxLockDelay:
         .byte   $00,$7B,$FE,$00,$7B,$FF,$00,$7B,$00,$00,$7B,$01
 ;unused
         .byte   $00,$FF,$00,$00,$FF,$00,$00,$FF,$00,$00,$FF,$00
+
+.segment "FRAMESPERDROPTABLEHDR"
+        ips_hunkhdr     "FRAMESPERDROPTABLE"
+
+.segment "FRAMESPERDROPTABLE"
+; new frames per drop table
+;.byte   $30,$2B,$26,$21,$1C,$17,$12,$0D
+;.byte   $08,$06,$05,$05,$05,$04,$04,$04
+.byte   $03,$03,$03,$02,$02,$02,$01,$01
+.byte   $01,$00,$00,$00,$00,$00,$00,$00
+.byte   $00,$00,$00,$00,$00,$00,$00,$00
+.byte   $00,$00,$00,$00,$00,$00
+
         
 ; TETRIS MAX hacks end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
