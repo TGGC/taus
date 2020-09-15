@@ -533,11 +533,11 @@ multiplyBy100:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; TETRIS MAX hacks - new code
-TMAX_LockDelayDefault   = 18
+TMAX_LockDelayDefault   = 15
 TMAX_LockDelayTable     = 19
 TMAX_DASWindUp          = 8
 TMAX_DASRepeat          = 1
-TMAX_FullSpeedLevel     = 9
+TMAX_FullSpeedLevel     = 15
 
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -674,7 +674,7 @@ tetrisMaxKickTable:
         ;L
         .dbyt   $0000,$0200,$0004,$0004,$0200,$0000,$0000,$0000
         ;I
-        .dbyt   $ffff,$ffff
+        .dbyt   $ffff,$ffff,$ffff,$ffff
 
 ; new drop code, which allows hard drop
 tetrisMaxDrop:
@@ -758,12 +758,17 @@ tetrisMaxFirstPiece:
         lda     #0
         sta     player1_autorepeatY
         sta     player2_autorepeatY
+        sta     player1_holdDownPoints
+        sta     player2_holdDownPoints
         lda     #64
         sta     player1_fallTimer
         sta     player2_fallTimer
         rts
         
 tetrisMaxPieceSpawn:
+        lda     #0
+        sta     autorepeatX
+        sta     holdDownPoints
         lda     newlyPressedButtons
         sta     tmp2
         lda     heldButtons
@@ -774,7 +779,7 @@ tetrisMaxPieceSpawn:
         lda     heldButtons
         and     #$03
         cmp     #0
-        bne     @noDAS
+        beq     @noDAS
         lda     #TMAX_DASWindUp-TMAX_DASRepeat
         sta     autorepeatX
 @noDAS:
@@ -794,11 +799,9 @@ writeLockDelay:
 
 
 tetrisMaxLockDelay:
-;        .byte   $30,$2B,$26,$21,$1C,$17,$12,$0D
-;        .byte   $08,$06
-        .byte   $07,$06,$06,$06,$06,$06,$06,$06
-        .byte   $06,$1E,$1E,$1E,$1E,$1E,$16,$16
-        .byte   $16,$16,$16,$16
+        .byte   $30,$2B,$26,$21,$1C,$17,$12,$0D
+        .byte   $08,$06,$06,$06,$06,$06,$06,$1E
+        .byte   $1A,$16,$12,$0F
 
         
 ; TETRIS MAX hacks end
@@ -951,11 +954,11 @@ tetrisMaxLockDelay:
 
 .segment "FRAMESPERDROPTABLE"
 ; new frames per drop table
-;.byte   $30,$2B,$26,$21,$1C,$17,$12,$0D
-;.byte   $08,$06,$05,$05,$05,$04,$04,$04
-.byte   $03,$03,$03,$02,$02,$02,$01,$01
-.byte   $01,$00,$00,$00,$00,$00,$00,$00
+.byte   $30,$2B,$26,$21,$1C,$17,$12,$0D
+.byte   $08,$06,$05,$04,$03,$02,$01,$00
 .byte   $00,$00,$00,$00,$00,$00,$00,$00
+;.byte   $01,$00,$00,$00,$00,$00,$00,$00
+;.byte   $00,$00,$00,$00,$00,$00,$00,$00
 .byte   $00,$00,$00,$00,$00,$00
 
         
