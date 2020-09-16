@@ -9,6 +9,8 @@
 ; wallkick to rotate in tight corners
 ; hard drop
 ; high gravity
+; lock delay
+; speed curve
 
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
